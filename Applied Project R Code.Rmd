@@ -1,0 +1,451 @@
+---
+title: "Applied Econometrics Project"
+author: Alex Dubovsky
+output: 
+  pdf_document: 
+    toc: true
+date: "2024-04-08"
+---
+# Question 1: Returns to Education of UK Twins
+## Part A)
+```{r setup, include=FALSE}
+library(lmtest)
+library(readxl)
+library(zoo)
+library(e1071)
+library(tseries)
+library(urca)
+library(lmtest)
+library(dplyr)
+library(urca)
+library(knitr)
+library(kableExtra)
+library(ggplot2)
+library(readstata13)
+library(tinytex)
+library(lmtest)
+library(sem)
+library(ivreg)
+library(sandwich)
+```
+```{r,echo=FALSE}
+dataset = read.dta13("C:/Users/AlexD/Documents/Economics/UCL/Econometrics/BCHHS_data.dta")
+ln_earnings = log(dataset$earning)
+dataset=cbind(dataset,ln_earnings)
+agesq = (dataset$age)^2
+dataset=cbind(dataset,agesq)
+parta1= summary(lm(ln_earnings ~ highqua+age+agesq,data=dataset))
+parta2 = summary(ivreg(ln_earnings~highqua+age+agesq | twihigh+age+agesq,data=dataset))
+Rsq1 = round(parta1$r.squared,4)
+Radsq1= round(parta1$adj.r.squared,4)
+Rsq2 = round(parta2$r.squared,4)
+Radsq2= round(parta2$adj.r.squared,4)
+
+```
+```{r, echo=FALSE}
+Results_1 = round(parta1$coefficients,4)
+empty_row = cbind("","","","")
+rsq_row = cbind(Rsq1,"","","" )
+radsq_row = cbind(Radsq1,"","","")
+Results_1 = rbind(Results_1,empty_row,rsq_row,radsq_row)
+rownames(Results_1) = c("Intercept","highqua","age","agesq","","R^2", "Adj R^2")
+knitr::kable(Results_1,"pipe", caption="OLS")
+Results_2 = round(parta2$coefficients,4)
+Rsq2_row = cbind(Rsq2,"","","")
+Radsq2_row = cbind(Radsq2,"","","")
+Results_2 = rbind(Results_2,empty_row,Rsq2_row,Radsq2_row)
+rownames(Results_2) = c("Intercept","highqua","age","agesq","","R^2", "Adj R^2")
+knitr::kable(Results_2,"pipe",caption = "2SLS IV")
+
+```
+### Pooled OLS
+ We see there is no discrepancy in our reports for the coefficient on estimated years of education and log earnings. Additionally, there is no discrepancy in the standard error and thus the significance of our results, which are significant at the 1% level. Note, that these coefficients have been rounded to 4 decimal places as opposed to 3 which is used in the paper on the estimates. This is the cause for the difference in reported figures. This is also the case for the covariate age. We also see no serious discrepancy in the reported agesq. Once again, again discrepancy in reporting is caused by rounding. However, we examine a much tighter standard error and thus more significant results. There is no significant discrepancy in the reported $R^2$, even so, comparisons of low $R^2$ have little meaning due to a lack of predictive power in both models.
+
+### Pooled 2SLS IV
+We examine a discrepancy in our estimate for the pooled IV regression. We see that an increase in estimated years of schooling is associated with an 8.74% increase in earnings. There is no serious discrepancy in the standard errors, only such a discrepancy is due to rounding once more. The covariate age also experiences no serious discrepancies compared to the paper. Looking at $age^2$, we see no serious discrepancy due to the same reasonings. As in the pooled OLS, we examine tighter standard errors and thus more significant results in the case of $age^2$.
+
+### Intercept
+The intercept of regression models represents the expected value or mean of the dependent variable when all independent variables are set to 0. In the context of education and log earnings, this has no interpretable meaning. When education is set to 0, your log earnings are this intercept. This cannot be possible in observed data. 
+
+## Part B)
+The interpretation of the coefficient on estimated years of education: A one-unit increase in the estimated years of education ( 1 year) is associated with a 7.68% increase in earnings for the Pooled OLS, and it is associated with an 8.74% increase in the earnings for the 2SLS IV regression. Note, that these are not causal effects. Although using the IV of the opposite twin's report of the other twin's education level removes the hypothesized measurement error, we still believe the covariate is correlated with some unknown variable, ability. Thus these are not true causal effects. 
+
+## Part C)
+The paper posits that the estimated years of education are endogenous due to measurement error and omitted variable bias (inability to measure ability). We can use the variable twihigh as an instrument for the estimated years of education to remove measurement error, which causes downward bias. This variable is relevant (correlated with endogenous education) because the twin has good knowledge of the other twin's education and has no incentive to mismeasure this amount. Additionally, we expect that the twin inputting their opposite's years of education is uncorrelated with the log earnings of that opposite twin, or at the very least less exogenous through some role they play in their twin's earnings. As such, it could be a good instrument.  
+
+## Part D)
+In column 2, the researchers do not use heteroskedastic errors, but the usual homoskedastic-case standard errors. There is no need to use heteroskedastic robust standard errors on the pooled data set as we see that the discrepancy between our pooled OLS under heteroskedastic and non-heteroskedastic errors are identical.
+```{r, echo=FALSE}
+OLS = lm(ln_earnings ~ highqua + age+ agesq, data = dataset)
+robust_OLS = vcov(OLS,type = "HC1")
+OLS_robust = round(coeftest(OLS, vcov = robust_OLS),4)
+IV = ivreg(ln_earnings ~ highqua + age + agesq | twihigh + age +agesq, data = dataset)
+robust_IV = vcov(IV, type = "HC1")
+IV_robust = round(coeftest(IV, vcov = robust_IV),4)
+knitr::kable(OLS_robust[0:4,0:4], "pipe", caption = "Heteroskedastic Robust Std Errors: OLS")
+knitr::kable(IV_robust[0:4,0:4], "pipe", caption = "Heteroskedastic Robust Std Errors: IV")
+
+```
+## Part E)
+Comparing our within-twin OLS estimates we see no serious discrepancies, where discrepancies are only caused by rounding. Additionally, this is also the case with the standard errors. Comparing our within-twin IV estimate and standard error also experiences no discrepancy.
+```{r, echo=FALSE}
+
+twinset1 = dataset %>% filter(twinno==1)
+twinset2 = dataset %>% filter(twinno==2)
+difftwinset = twinset2 - twinset1
+difftwinset$family = twinset2$family
+
+LM_e = lm(ln_earnings~0+highqua,data=difftwinset)
+IV_e = ivreg(ln_earnings~0+highqua | 0+twihigh,data=difftwinset)
+diff_LM = round(data.frame(summary(LM_e)$coefficients),4)
+rownames(diff_LM) = "dhighqua"
+diff_IV = data.frame(summary(IV_e)$coefficients)
+rownames(diff_IV) = "dhighqua"
+knitr::kable(diff_LM,"pipe", caption = "Within Twin OLS",col.names = c("","Estimates","Std Error","t value","PR(>|t|)"))
+knitr::kable(round(diff_IV,4),"pipe",caption = "Within Twin IV",colnames=c("","Estimate","Std.Error","t value","Pr(>|t|)"))
+```
+ 
+## Part F)
+By differencing the data set between the twin-pairs we are filtering out any shared family-specific heterogeneous effects and any genetic effects that are correlated with one's ability because these twin-observations come from the same genes and same household. This unobservable variable, ability, is a huge driver of endogeneity and thus inconsistent estimators. Ability is correlated with the years you spend on education and so some of the variation of these years of schooling on log earnings is captured by the residual. 
+
+## Part G)
+We exclude the constant in the within-group estimation due to the lack of economic meaning. When either twin-reported years of schooling or self-reported years of schooling are equivalent to 0, your earnings should be 0, as 0 schooling is equivalent to being just born, and you have not gone through mandatory education. The difference in these constants between the twin pairs is irrelevant reporting. In an ideal differenced model, this should be 0 as the shared effects should be equal between each twin.
+
+After adding in the intercepts we see, in the OLS case, that the estimate for education decreases slightly. Additionally, we notice that the standard errors increase slightly after adding the intercept, leading to a lower rate of rejection of the insignificance hypothesis. In the IV case, we see the estimate has increased slightly, with the standard error decreasing causing a higher rate of rejection of lack of significance.
+
+```{r, echo=FALSE}
+LM_g = lm(ln_earnings~+highqua,data=difftwinset)
+IV_g = ivreg(ln_earnings~+highqua | twihigh,data=difftwinset)
+LM_G = data.frame(summary(LM_g)$coefficients)
+rownames(LM_G) = c("Intercept","dhighqua")
+IV_G = data.frame(summary(IV_g)$coefficients)
+rownames(IV_G) = c("Intercept","dhighqua")
+knitr::kable(round(LM_G,4),"pipe", caption = "Within Twin OLS",col.names = c("","Estimates","Std Error","t value","PR(>|t|)"))
+knitr::kable(round(IV_G,4),"pipe",caption = "Within Twin IV",colnames=c("","Estimate","Std.Error","t value","Pr(>|t|)"))
+```
+
+## Part H)
+I find that Heteroskedastic Robust Standard Errors provide more precise estimators than normal standard errors in the within-twin data set. Therefor in the context of this research, i would prefer to use Heteroskedastic Robust Standard Errors.
+```{r , echo = FALSE}
+LM_h = lm(ln_earnings~0+highqua,data=difftwinset)
+Robust_OLS_Within = coeftest(LM_h, vcov = vcovHC(LM_h, type = 'HC1'))
+new_df = data.frame(t(Robust_OLS_Within[0:1,0:4]))
+rownames(new_df) = c("dhighqua")
+knitr::kable(round(new_df,4), "pipe",caption =" Heteroskedastic Robust Standard Errors, Within-Twin OLS")
+```
+## Part I)
+My results align with those of Vikesh Amin's. After creating a new subset of the within-twin data set, where observations with an absolute difference in earnings less than 60 were included, I performed the exact same regressions as i did in part E. By excluding these outliers, we see a big decrease in both the IV and OLS estimators of education on log earnings. However, we find that the standard errors of these estimators have increased significantly, leading to our estimators no longer being significant at the 10% level. These estimators cannot be considered precise.
+```{r, echo=FALSE}
+difftwinset = cbind(difftwinset,abs_earning = abs(difftwinset$earning))
+Outliers = data.frame(subset(difftwinset, abs_earning>60))
+difftwinset_robust= data.frame(subset(difftwinset,abs_earning<60))
+
+LM_i = lm(ln_earnings~0+highqua,data=difftwinset_robust)
+IV_i = ivreg(ln_earnings~0+highqua | 0+twihigh,data=difftwinset_robust)
+diff_LM = round(data.frame(summary(LM_i)$coefficients),4)
+rownames(diff_LM) = "dhighqua"
+diff_IV = data.frame(summary(IV_i)$coefficients)
+rownames(diff_IV) = "dhighqua"
+
+
+knitr::kable(diff_LM,"pipe", caption = "Within Twin OLS",col.names = c("","Estimates","Std Error","t value","PR(>|t|)"))
+knitr::kable(round(diff_IV,4),"pipe",caption = "Within Twin IV",colnames=c("","Estimate","Std.Error","t value","Pr(>|t|)"))
+```
+
+
+## Part J)
+It makes sense to drop these outliers. The new estimations have shown that the model is sensitive to extreme cases of data and the estimators become heavily affected, increasing the estimator on education on log earnings from the case without outliers by roughly 1.1% for OLS and 4.2% in the IV case and with increased significance. 
+
+# Question 2
+```{r,echo=FALSE}
+q2_dataset= read.dta13("C:/Users/AlexD/Documents/Economics/UCL/Econometrics/timss-canada-1995-pop1.dta")
+column_names = data.frame((colnames(q2_dataset)[4:15])[-2])
+interceptrow = data.frame("intercept")
+colnames(interceptrow) = colnames(column_names)
+column_names = rbind(interceptrow,column_names)
+```
+## Part A)
+Age is most likely endogenous in this experiment due to correlated effects not included in the model, such as grade retention, socioeconomic factors, and parental decisions. Therefore, the student's age at the start of the school year is not a random draw from the distribution of ages. For eg: in parental decisions, the family might decide to move their child a year in advance, this introduces a negative bias on the test scores according to the researchers. On the other hand, in the case of grade retention, students who perform poorly repeat their grade and as a result become one year older than their peers, introducing an additional negative bias on the test scores. To correct for these endogenous effects, the researchers use relative age. This is the difference between the birth month and the cut-off date for grade enrollment. For eg: in the UK the cutoff date is the first of September. Any students who are within a certain age range by this date will be entered into that grade. This means students born after the 2nd of September will be the eldest and those born in August are the youngest. Relative age is argued to be exogenous because parents don't target the birth month of the child, and is independent of any other factors. Lastly, relative age is correlated with age simply because a high proportion of students enter into schooling as they should (without retention) such that students with a higher relative age are older than students with a lower relative age (born closer to the cut-off date).
+
+## Part B)
+We use the Dataset for Canada, thus we compare it with the estimations for Canada from Bedard and Dhuey (2006). We estimate a coefficient for the non-weighted OLS effect of age on math scores of 0.017 with statistical insignificance at the 10% level. Bedard and Dhuey, estimate a population-weighted coefficient of 0.01 with a higher standard error and thus less precision and also comes to the conclusion of insignificance as a predictor for math test scores. We also estimate a non-population weighted IV coefficient of age on math scores which returns 0.184 with a standard error of 0.026 and can be concluded that this is significant at all levels. On the other hand, we see that Bedard and Dhuey estimate a coefficient of 0.19 with a standard error of 0.059 which results in significance at the 5% level or higher. In sum, the discrepancy between our non-weighted and Bedard and Dhuey's weighted estimators is not large. 
+
+Moving on to the population-weighted estimators, we see significant discrepancy across both OLS and IV. We estimate the effect of age on math test scores to be 0.37 with a significance at the 1% level. Contrasting with Bedard and Dhuey, we see a nearly 4-fold increased effect of age on math scores but also a more significant result. For weighted IV, we estimated the effect of age on maths test scores to be 0.146 marks, significant at all levels. The discrepancy with Bedard and Dhuey's estimator is much less than in the case of weighted OLS. 
+
+These discrepancies have appeared for 2 reasons. We normalized the maths test scores around the sub-sample of candian data, unlike Bedard and Dhuey. Additionally, the household variable size may be measured differently. This normalization means we can no longer compare across countries but within countries, and across grades and schools. 
+```{r,echo=FALSE}
+
+OLS = lm(math_score ~ age + grade + female + mother_native + father_native + both_parents + calculator + computer + books100 + hh_size + rural,
+                    data = q2_dataset)
+robust_OLS = vcov(OLS,type = "HC1")
+OLS_robust = data.frame(coeftest(OLS, vcov = robust_OLS))[1:12,1]
+knitr::kable(OLS_robust,"pipe",caption = "Non-weighted OLS")
+
+IV = ivreg(math_score ~ age + grade + female + mother_native + father_native + both_parents + calculator + computer + books100 + hh_size + rural|
+               r_age + grade + female + mother_native + father_native + both_parents + calculator + computer + books100 + hh_size + rural,
+                    data = q2_dataset)
+robust_IV = vcov(IV,type = "HC1")
+IV_robust = data.frame(coeftest(IV, vcov = robust_IV))[1:12,1]
+knitr::kable(IV_robust,"pipe",caption = "Non-weighted IV")
+
+
+WLS_OLS = lm(math_score ~ age + grade + female + mother_native + father_native + both_parents + calculator + computer + books100 + hh_size + rural,
+                    data = q2_dataset,
+                    weights = q2_dataset$weight)
+robust_WLS = vcov(WLS_OLS,type = "HC1")
+WLS_robust = data.frame(coeftest(WLS_OLS, vcov = robust_WLS))[1:12,1]
+knitr::kable(WLS_robust,"pipe",caption = "Weighted OLS")
+
+WLS_IV = ivreg(math_score ~ age + grade + female + mother_native + father_native + both_parents + calculator + computer + books100 + hh_size + rural|
+               r_age + grade + female + mother_native + father_native + both_parents + calculator + computer + books100 + hh_size + rural,
+                    data = q2_dataset,
+                    weights = 1/q2_dataset$weight)
+robust_WLS_IV = vcov(WLS_IV,type = "HC1")
+WLS_IV_robust = (data.frame(coeftest(WLS_IV, vcov = robust_WLS_IV)))[1:12,1:1]
+
+knitr::kable(WLS_IV_robust,"pipe",caption = "Weighted IV")
+
+```
+
+## Part C)
+### OLS Controls
+The coefficient on grade implies that with each additional grade, your maths test score increases by 6.53 marks. This is statistically significant at all levels. This coefficient makes intuitive sense, as one more additional year means one more year of education (assuming no retention), or an increased maturity and thus better results.
+
+The coefficient on females implies that female students, on average, achieve 0.7 marks less than male students, holding all other controls constant. I would not expect this result. Modern research has in fact shown the opposite, that female students are outperforming their male counterparts in school. Perhaps, in this data set, there are some causes of endogeneity not taken into account. However, we also cannot rule out that this result could be representative of this population.
+
+The coefficient on mother and father native are as expected. Native mothers and fathers are likely to know their area better, thus select better schools, have better connections in the community, and have access to its resources. 
+
+The coefficient for living with both parents is also as expected. Growing up with both parents who can split the at-home teaching, for eg, results in more consistent time learning and stimulating development.
+
+The coefficient on the goods, computer, calculator and 100 books are also as expected. More books in the house means the child has access to more stimulation during early development and more growth opportunities. It is also an indicator of inquisitive parents and perhaps more education-minded parents. Regarding calculators and computers, owning these items in the house improves the ease of learning. However, more importantly, these variables are proxies for the economic status of the household. Access to these assets means you are relatively well-off and we expect a positive correlation with economic status and maths score.
+
+Household size having a negative coefficient implies that as the number of people in the house increases, the lower the test score on average. This could be because household resources and attention is divided between more and as such the marginal benefits are reduced across the board. This result is as expected. 
+
+Rural areas may have less access to local resources such as libraries, worse internet connection, and a greater travel burden to school, all of which can viably negatively affect early development. The negative coefficient is to be expected.
+
+### IV Controls
+The sign of the coefficients are the same as the OLS control covariates and are thus expected.
+
+### Weighted OLS Controls
+The signs of the coefficients are the same as the OLS control covariates and are thus expected.
+
+### Weighted IV Controls
+The signs of the coefficients are the same as the OLS control covariates and are thus expected.
+
+
+## Part D)
+Comparing the coefficient on age between male and female sub-populations, after instrumenting on relative age, we see a discrepancy of 0.05 marks in favor of the female population. This suggests that an additional month of age is more beneficial for females, resulting in a higher maths test score than if the males had received an additional month of age. Note, the coefficients in the male and female populations are both positive. 
+
+Comparing the coefficient on age between students who have native-born mothers and those who don't, we see a discrepancy of 0.07 marks in favor of those with a native mother. This indicates that those students who are born of native mothers experience 0.07 more marks on average per additional month of age than those without native mothers.
+
+Comparing students with a calculator to those who do not, we see that there is roughly a 0.03 mark discrepancy between the two populations on the effect of their age on their math scores. Interpreting this, one additional month of age, with a calculator, is associated with a 0.03 increase in math score over those children who do not have a calculator.
+
+One additional month of age, for students who own a computer at home, is associated with an increase in the math score of the student by 0.075 over the students without a computer at home. 
+
+The variables that indicate the household possession of calculators and computers are a proxy for the socioeconomic status of the household. These last two points can thus be interpreted as the marginal benefits of an additional month of age on maths scores for those students coming from a lower status is less than those students of a higher status.
+
+
+
+
+
+```{r, echo=FALSE}
+only_female = subset(q2_dataset, female==1)
+only_male = subset(q2_dataset, female ==0)
+only_native_mother = subset(q2_dataset, mother_native ==1)
+no_native_mother = subset(q2_dataset, mother_native==0)
+only_calc = subset(q2_dataset, calculator ==1)
+no_calc = subset(q2_dataset, calculator ==0)
+only_comp = subset(q2_dataset, computer==1)
+no_comp = subset(q2_dataset, computer==0)
+
+
+IV_fem = ivreg(math_score ~ age + grade + female + mother_native + father_native + both_parents + calculator + computer + books100 + hh_size + rural|
+               r_age + grade + female + mother_native + father_native + both_parents + calculator + computer + books100 + hh_size + rural,
+                    data = only_female)
+fem_IV = vcov(IV_fem,type = "HC1")
+IV_fem = data.frame(coeftest(IV_fem, vcov = fem_IV))[1:12,1]
+
+IV_man = ivreg(math_score ~ age + grade + female + mother_native + father_native + both_parents + calculator + computer + books100 + hh_size + rural|
+               r_age + grade + female + mother_native + father_native + both_parents + calculator + computer + books100 + hh_size + rural,
+                    data = only_male)
+man_IV = vcov(IV_man,type = "HC1")
+IV_man = data.frame(coeftest(IV_man, vcov = man_IV))[1:12,1]
+
+IV_mother = ivreg(math_score ~ age + grade + female + mother_native + father_native + both_parents + calculator + computer + books100 + hh_size + rural|
+               r_age + grade + female + mother_native + father_native + both_parents + calculator + computer + books100 + hh_size + rural,
+                    data = only_native_mother)
+mother_IV = vcov(IV_mother,type = "HC1")
+IV_mother = data.frame(coeftest(IV_mother, vcov = mother_IV))[1:12,1]
+
+IV_nom = ivreg(math_score ~ age + grade + female + mother_native + father_native + both_parents + calculator + computer + books100 + hh_size + rural|
+               r_age + grade + female + mother_native + father_native + both_parents + calculator + computer + books100 + hh_size + rural,
+                    data = no_native_mother)
+nom_IV = vcov(IV_nom,type = "HC1")
+IV_nom = data.frame(coeftest(IV_nom, vcov = nom_IV))[1:12,1]
+
+IV_calc = ivreg(math_score ~ age + grade + female + mother_native + father_native + both_parents + calculator + computer + books100 + hh_size + rural|
+               r_age + grade + female + mother_native + father_native + both_parents + calculator + computer + books100 + hh_size + rural,
+                    data = only_calc)
+calc_IV = vcov(IV_calc,type = "HC1")
+IV_calc = data.frame(coeftest(IV_calc, vcov = calc_IV))[1:12,1]
+
+IV_no_calc = ivreg(math_score ~ age + grade + female + mother_native + father_native + both_parents + calculator + computer + books100 + hh_size + rural|
+               r_age + grade + female + mother_native + father_native + both_parents + calculator + computer + books100 + hh_size + rural,
+                    data = no_calc)
+no_calc_IV = vcov(IV_no_calc,type = "HC1")
+IV_no_calc = data.frame(coeftest(IV_no_calc, vcov = no_calc_IV))[1:12,1]
+
+IV_comp = ivreg(math_score ~ age + grade + female + mother_native + father_native + both_parents + calculator + computer + books100 + hh_size + rural|
+               r_age + grade + female + mother_native + father_native + both_parents + calculator + computer + books100 + hh_size + rural,
+                    data = only_comp)
+comp_IV = vcov(IV_comp,type = "HC1")
+IV_comp = data.frame(coeftest(IV_comp, vcov = comp_IV))[1:12,1]
+
+IV_no_comp = ivreg(math_score ~ age + grade + female + mother_native + father_native + both_parents + calculator + computer + books100 + hh_size + rural|
+               r_age + grade + female + mother_native + father_native + both_parents + calculator + computer + books100 + hh_size + rural,
+                    data = no_comp)
+no_comp_IV = vcov(IV_no_comp,type = "HC1")
+IV_no_comp = data.frame(coeftest(IV_no_comp, vcov = no_comp_IV))[1:12,1]
+
+knitr::kable(IV_fem, "pipe" , caption = "Female-only Subset")
+knitr::kable(IV_man, "pipe" , caption = "Male-only Subset")
+knitr::kable(IV_mother, "pipe" , caption = "Native-Mother only Subset")
+knitr::kable(IV_nom,"pipe" , caption = "Non-native-Mother only Subset")
+knitr::kable(IV_calc, "pipe" , caption = "With Calculator Subset")
+knitr::kable(IV_no_calc, "pipe", caption = "Without Calculator Subset")
+knitr::kable(IV_comp, "pipe" , caption = "With Computer Subset")
+knitr::kable(IV_no_comp, "pipe", caption = "Without Computer Subset")
+
+
+```
+
+
+
+
+## Part E)
+The inclusion of school dummies of all but one school (due to multicollinearity) means that our regression covariates, excluding the dummies of the school ID, indicate the effects only within the first school. This is the base school, set to school id =1 in this problem set. Interpreting the coefficients on the other school dummies is as in this example using the female population: The effect of being in school 1 on maths score for the female population is 2.373, all else constant, and the effect of being in school 2 and being female is 2.373 + (-4.778), all else constant. Of course, this does not mean much as other factors are held constant such as age, where a value of age = 0 is not meaningful. However, the benefits of such a fixed effect model are netting out all other heterogeneous effects of each school on the independent variables, and now we can observe these changes within each school by adjusting the intercept of the model. 
+
+In the female population, we estimate, for each school (within each school), the marginal effect (equal for all schools, only the intercept changes) of age on maths score of 0.197 marks as compared to 0.21 marks previously estimated across schools in part D. The male coefficient counterpart is 0.168 marks, up from 0.158 marks across schools. 
+
+In the population of students who have native mothers, their within-school effect of age on math test score is 0.19 marks and for students without native mothers it is 0.13 marks. In part D, the across-school values were 0.203 and 0.13 respectively. Thus, after extracting the heterogeneous effects of each school from the other coefficients, these values have remained relatively unchanged. 
+
+In the population of students who have calculators, the within-school effect of age on maths score is 0.177 (down from 0.189 in part d) and for students without calculators this effect is 0.18 (up from 0.158 in part d). This seems contradictory. Students without calculators are somehow achieving higher scores within their schools.
+
+In the population of students who have computers, the within-school effect of age on maths scores is 0.197 (down from 0.22) and for students without computers, this effect is 0.146 (up from 0.145) marks.
+
+```{r, echo=FALSE}
+
+df.fem = data.frame(only_female, index = c("idschool"))
+
+#fixede= plm(math_score ~ age + grade + female + mother_native + father_native + both_parents + calculator + computer + books100 + hh_size + rural|
+#               r_age + grade + female + mother_native + father_native + both_parents + #calculator + computer + books100 + hh_size + rural,
+ #       data = panel_fem,
+ #       model = "within")
+
+
+only_female = subset(q2_dataset, female==1)
+only_male = subset(q2_dataset, female ==0)
+only_native_mother = subset(q2_dataset, mother_native ==1)
+no_native_mother = subset(q2_dataset, mother_native==0)
+only_calc = subset(q2_dataset, calculator ==1)
+no_calc = subset(q2_dataset, calculator ==0)
+only_comp = subset(q2_dataset, computer==1)
+no_comp = subset(q2_dataset, computer==0)
+
+FE_female= summary(ivreg(math_score ~ age + grade + female + mother_native + father_native + both_parents + calculator + computer + books100 + hh_size + rural +factor(idschool)| r_age + grade + female + mother_native + father_native + both_parents + calculator + computer + books100 + hh_size + rural +factor(idschool),
+           data = df.fem))
+FE_female = FE_female$coefficients[0:13,0:4]
+
+FE_male= summary(ivreg(math_score ~ age + grade + female + mother_native + father_native + both_parents + calculator + computer + books100 + hh_size + rural +factor(idschool)| r_age + grade + female + mother_native + father_native + both_parents + calculator + computer + books100 + hh_size + rural +factor(idschool),
+           data = only_male))
+FE_male = FE_male$coefficients[0:13,0:4]
+
+FE_mother= summary(ivreg(math_score ~ age + grade + female + mother_native + father_native + both_parents + calculator + computer + books100 + hh_size + rural +factor(idschool)| r_age + grade + female + mother_native + father_native + both_parents + calculator + computer + books100 + hh_size + rural +factor(idschool),
+           data = only_native_mother))
+FE_mother = FE_mother$coefficients[0:13,0:4]
+
+FE_Nmother= summary(ivreg(math_score ~ age + grade + female + mother_native + father_native + both_parents + calculator + computer + books100 + hh_size + rural +factor(idschool)| r_age + grade + female + mother_native + father_native + both_parents + calculator + computer + books100 + hh_size + rural +factor(idschool),
+           data = no_native_mother))
+FE_Nmother = FE_Nmother$coefficients[0:13,0:4]
+
+FE_calc= summary(ivreg(math_score ~ age + grade + female + mother_native + father_native + both_parents + calculator + computer + books100 + hh_size + rural +factor(idschool)| r_age + grade + female + mother_native + father_native + both_parents + calculator + computer + books100 + hh_size + rural +factor(idschool),
+           data = only_calc))
+FE_calc = FE_calc$coefficients[0:13,0:4]
+
+FE_no_calc= summary(ivreg(math_score ~ age + grade + female + mother_native + father_native + both_parents + calculator + computer + books100 + hh_size + rural +factor(idschool)| r_age + grade + female + mother_native + father_native + both_parents + calculator + computer + books100 + hh_size + rural +factor(idschool),
+           data = no_calc))
+FE_no_calc = FE_no_calc$coefficients[0:13,0:4]
+
+FE_comp= summary(ivreg(math_score ~ age + grade + female + mother_native + father_native + both_parents + calculator + computer + books100 + hh_size + rural +factor(idschool)| r_age + grade + female + mother_native + father_native + both_parents + calculator + computer + books100 + hh_size + rural +factor(idschool),
+           data = only_comp))
+FE_comp = FE_comp$coefficients[0:13,0:4]
+
+FE_no_comp= summary(ivreg(math_score ~ age + grade + female + mother_native + father_native + both_parents + calculator + computer + books100 + hh_size + rural +factor(idschool)| r_age + grade + female + mother_native + father_native + both_parents + calculator + computer + books100 + hh_size + rural +factor(idschool),
+           data = no_comp))
+FE_no_comp = FE_no_comp$coefficients[0:13,0:4]
+
+
+
+
+
+knitr::kable(FE_female, "pipe",caption="School Fixed Effects : Female Population")
+knitr::kable(FE_male, "pipe",caption="School Fixed Effects : Male Population")
+knitr::kable(FE_mother, "pipe",caption="School Fixed Effects : Native-Mother Population")
+knitr::kable(FE_Nmother, "pipe",caption="School Fixed Effects : Non-Native-Mother Population")
+knitr::kable(FE_calc, "pipe",caption="School Fixed Effects : Calculator Population")
+knitr::kable(FE_no_calc, "pipe",caption="School Fixed Effects : No Calculator Population")
+knitr::kable(FE_comp, "pipe",caption="School Fixed Effects : Computer Population")
+knitr::kable(FE_no_comp, "pipe",caption="School Fixed Effects : No Computer Population")
+```
+
+# Question 3)
+## Part A)
+A randomized experiment consists of the researcher randomly assigning observations to treatment and control groups to study the effects of some treatment variables without any selection biases. A natural experiment is observed and recorded without the input of a researcher. There is some exogenous change that induces each observation to be assigned a treatment or not.  
+
+## Part B)
+When a researcher has to choose between the many models they have produced, they leave the experiment open to personal biases. For example, the researcher may want to portray their results as more significant or that the result is not aligned with their beliefs, as such this researcher chooses to report some of the results of their choosing. On the other hand, more models mean a greater understanding of the data. Additionally, by comparisons of coefficients on these models you can, to some degree, ascertain the degree of robustness by checking if this relationship holds across all models. 
+
+## Part C)
+Sensitivity analysis reports are a record of the inferences implied by an alternative set of opinions, also called assumptions. These reports measure the sensitivity of the model inferences to changes in these assumptions, which encompasses the specification and functional form of the model i.e. the relationship of the variables.
+
+## Part D)
+A natural experiment, or quasi-experiment, as described using examples by Angrist and Pischke, is when you study effects induced upon a population non-randomly (eg: geographic location determines if you are affected by a hurricane) which are caused by nature or human institutions, which are out of the researchers control. Furthermore, they go on to say that these natural experiments can randomly assign treatments, as Leamer also says. Angrist and Pischke believe that with modern advancements in econometric methods, and with better research design, causal effects could be interpreted from natural experiments. On the other hand, Leamer was skeptical about the credibility of natural experiments.
+
+## Part E)
+The main critique of Ehrlich's work by Angrist and Pischke was the lack of a credible research design. They believe Ehrlich failed to emphasize a variable or relationship to explain the variation in his dependent variable which would have a causal effect on his independent variable. He failed to highlight confounding variables.
+
+## Part F)
+The critique in Angrist and Pischke is specifically for extreme bounds analysis, a form of sensitivity analysis. They claim that this type of information gathering, " casting of a wide net", does not reflect causal relationships.
+
+## Part G)
+Some Solutions proposed include newer econometric techniques: 
+1) Randomised Control Trials
+2) IV
+3)Differences-in-Differences
+4)Regression Discontinuity
+5)Matching and Propensity score.
+
+## Part H)
+Randomized control trials are often not feasible, such as being too costly or unethical. 
+
+In IV estimation, we already know the instrument must satisfy the exogeneity and relevance conditions so the choice of instrument is restricted, and often very hard to argue in its favor.
+
+In regression discontinuity, Angrist and Pischke mention that the cutoff point can influence behaviors of the observations, and we are told in an earlier example in the case of sending children to school, parents will sort themselves into schools with smaller classes. This leads to a non-random sample.
+
+Matching and Propensity score methods do not model the behavior between covariates and independent variables and completely leaving unexplained the confounding relationships.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
