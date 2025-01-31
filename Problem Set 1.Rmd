@@ -1,0 +1,32 @@
+---
+title: "Macroeconomic Policy Problem Set 1"
+author: "Alex Dubovsky"
+output: 
+  pdf_document:
+    latex_engine: pdflatex
+date: "2025-01-31"
+---
+
+```{r, echo=FALSE, include=FALSE}
+library(dynlm)
+library(vars)
+library(readxl)
+library(tseries)
+library(knitr)
+library(kableExtra)
+
+US = read_xls("/Users/alexdubovsky/Documents/Economics/UCL/Macro Policy/R Work/Exer1_2024.xls")
+US = US[-c(1:4),]
+US = US[-c(304:307),]
+US$pop = as.numeric(US$pop)
+ln_pce_pc = ts(log(US$`Personal consumption expenditures`/US$pop),start = c(1948,1), frequency =4)
+ln_g_pc = ts(log(US$`Government consumption expenditures and gross investment`/US$pop),start = c(1948,1), frequency =4)
+ln_gdp_pc = ts(log(US$`Gross domestic product`/US$pop),start = c(1948,1), frequency =4)
+```
+```{r,echo=FALSE}
+VAR_1 = VAR(cbind(ln_pce_pc,ln_g_pc,ln_gdp_pc),p=4, type="both")
+VAR_1 = summary(VAR_1)
+rownames(VAR_1$corres) <- c("Consumption","Government Expenditures","GDP")
+knitr::kable(VAR_1$corres,"pipe", col.names = c("Consumption","Government Expenditures","GDP"),label = "Correlation Matrix for VAR innovations")
+```
+
