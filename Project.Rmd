@@ -1,20 +1,12 @@
 ---
-title: "ARIMA (2,1,5) Model of Log CPI of Energy in the UK"
+title: "Appendix"
 output: 
   pdf_document:
     latex_engine: pdflatex
 date: "2023-04-08"
 ---
-# Abstract
-This paper looks to build an ARIMA model for the Log Consumer Price Index of Energy in the UK between 1990 and 2022, which builds a linear description of the behavior of this variable over time, and then assess its out-of-sample forecasting capabilities. Initially, I begin with the analysis and summary of various visual plots and statistics to gain a foundation level of understanding of the variable of interest. I then use various Unit Root and Stationarity tests to rigorously identify the nature of the time series. I conclude on the nature of Log Consumer Price Index of Energy using the hypothesis testing of the ADF, PP and KPSS tests. I then move onto selecting the optimised number of lags to the Log CPI of Energy and the Error term to be used in the ARIMA model. After simulation of the ARIMA model I run Model Diagnostics, which test the residuals for White Noise behaviour. Lastly, using the ARIMA model derived, I forecast 10 steps ahead and compare to the out of sample data using various summary statistics such as the Mean Squared Error (MSE) and the Mean Absolute Percentage Error (MAPE) and two others. Comparing to the out of sample, allows me to see how good this model fits to the data. Lastly, I look for a cointegrating relationship with an economically linked variable and explain its importance. Graphs and Tables will be Provided in the Appendix.
 
-# Introduction
-Inflation is a variable of significant importance, it determines micro foundational decisions of economies such as savings and household expenditure, which from these foundations a macrocosm of variables known as macroeconomic variables are affected. It is most measured through a Consumer Price Index (CPI). Inflation determines the conduct of monetary policy at Central Banks, who utilise forecasting methods to gain an expectation of the future inflation rate. Forecasting inflation can be a very important measure for policies to keep the economy stable, as the central bank utilise this information to set their interest rates to control demand, savings, and inflation among many other possible targets. But when there are shocks that disturb equilibrium, it can distort relationships of our variables and hence cause inaccurate forecasts. One such recent shock which affects our variable of interest is the War on Ukraine. Russia is the World’s largest exporter of oil, gas and coal which are needed to produce energy. In 2021, Russia met the European Union’s and United Kingdom’s demand for such energy sources at 32% of total demand for fossil fuels (Frequently Asked Questions on Energy Security, November 2022). The price of such sources of Energy is governed by its costs, security of supply, and environmental policies. This is labelled as the Energy Trilemma (Rokke, 2022). It is quite clear to see that the security of the supply of these energy sources have been largely compromised as Russia utilises it as a weapon to pressure sanctioning nations. In the short term it would also be very difficult for European nations to develop independence from Russian sources of energy. An immediate ban on all Russian fossil fuels would further increases the costs of energy in the UK and further push UK homeowners into a desperate situation.  That is not to say that no measures for halting the supply of funds for the Russia-Ukraine war from the purchase of fossil fuels has been taken. From the beginning of 2023, the UK has banned all imports of fossil fuels from Russia (Bolton, March 2023). The situation is as such: Electricity prices in the UK has risen by 66.7% from February 2022 to February 2023, 53% of UK homeowners have reported to be using less energy in the house, gas prices has risen by 129% from February 2022 to February 2023 (Office of National Statistics, 2023). However, the increase in energy prices do not just affect homeowners, buts businesses and their costs too. Using the Basic New Keynesian Model, price rigidities are a main driver of inflation as a percentage of firms adjust their selling prices to maintain their markups as input prices rises. In the year leading up to December 2022, producer input prices rose by 16.5% and Producer output prices rose by 14.7% (Producer Price Inflation, UK, January 2023). Being able to analyse and forecast the behaviour of the CPI of Energy in the UK opens the door to understanding other variables.
-
-The data set chosen for this paper, CPI of Energy in the UK (FRED, 2023) spans from 1990 to 2022, and the chosen base year for the calculation of the Price Indexes is 2015, which is assigned the value 100 (100%).
-
-
-```{r,include=FALSE}
+```{r, include=FALSE}
 library(readxl)
 library(zoo)
 library(e1071)
@@ -28,7 +20,7 @@ library(kableExtra)
 library(ggplot2)
 
 
-dataset = read_xls("C:/Users/AlexD/Documents/Economics/3rd Year/Macroeconometrics/Project_Data.xls")
+dataset = read_xls("/Users/alexdubovsky/Documents/Economics/Year 3/Macroeconometrics/Project_Data.xls")
 Price = dataset$Value
 LogPrice=log(Price)
 DLPrice=diff(LogPrice)
@@ -57,16 +49,9 @@ Dateframe= data.frame(Date= Date,
                          LogPrice = LogPrice,
                       DLPrice=DLPrice)
 ```
-# Econometric Analysis
-## Summary Statistics
-The variables we are specifically interested in evaluating using a time series is the Log of CPI of Energy, LogPrice for short, and the growth rate of the CPI of energy also known as the first differenced Log CPI of Energy, DLPrice. Both these variables are taken in sample. To gain a surface level understanding of this variable a provide various summary statistics and plots.Kurtosis describes the "tailedness" of the distribution of the dataset, how flat the either end of the distribution is. A normal kurtosis level is 3, this is the value at which we want to compare to as it is the value given by Normal Distributions. Skewness is a measurement of distortion to the distribution reflected in its mean. It signals a non symmetric distribution curve if skewness moves away from zero. A time series plot, measures and plot the value of a variable over a specific time period. With these plots i am looking for typical signals of nonstationarity, non constant mean and variance. The ACF plot, plots the autocorrelation of each lag of the variable over lagged time. Here, i am looking for any stand out autocorrelations or patterns. The box plot, plots important cornerstones of the data, such as the median, minimum and maximum values, and lower and upper quartiles. It describes the spread of the data and can show outliers.
 
-Looking at the Time Series Plot of LogPrice, it is quite apparent that the nature of the data as it is, is nonstationary, but as always, more rigorous testing is needed. LogPrice has a very strong upward trend which shows the log of inflation of energy prices is rising on average from 1990 to 2022. The Histogram Plot of LogPrice shows its distribution. Two peaks indicate a bimodal distribution as the data centres around two separate points. This is clearly not a normal distribution so the statistical techniques used in this paper cannot be used here. A bimodal distribution could also suggest the data is sinusoidal, meaning that the data has a cyclical nature. Using the Boxplot, we see there are no outliers. The Autocorrelation Function of the LogPrice indicates nonstationary of the series. There is a very high persistence (AR parameter) of the lags of LogPrice, as even after 25 periods, lags up to 2 years, there remains a statistically significant effect on LogPrice. Normally, a geometrically decaying autocorrelation function indicates stationarity, but the length of significant lags of LogPrice is undermining such theory. LogPrice seems to have drift as the mean is significantly greater than zero and comparing the median to the mean (4.14 and 4.19 respectively) we can see that there is slight positive skewness. This is backed up by the skewness statistic which is very marginally above zero (0.0078). The kurtosis value of -1.6 indicates very little tales and is such quite different from the normal distribution. Summarising the initial findings, it seems LogPrice is nonstationary.
-
-The Time Series Plot of DLPrice heavily indicates stationarity. It seems that there are oscillations around a mean close to zero with no trend and variance of the points do not increase over time. The histogram of DLPrice shows a normal distribution with mode just below 0, but the frequencies do seem to be centred around zero mean, subtle signs of positive skewness, but no kurtosis. DLPrice seems to be normally distributed, thus typical statistical techniques, like the t-test will work.  The boxplot for DLPrice shows many outliers. Usually outliers can skew statistical techniques, however I choose to keep these outliers as they show spikes in inflation or deflation of energy prices which could be caused by shocks such as the Russia-Ukraine War. The Autocorrelation function of DLPrice seems to indicate stationarity. There are significant effects on DLPrice with its lag at lags 1 and 13, 1 month lag and 1 year (12months) lag. Looking at DLPrice, the mean is quite close to zero (0.0036), but it cannot be ruled out yet that there is no drift. Additionally,  the median is also lower than the mean (0.0022<0.0036) thus indicating a slight positive skew as also shown in the skewness statistic of 0.64. The Kurtosis value of 3.02 is very close to the normal levels of 3, so there is minimal kurtosis, in this aspect it is quite close to the normal distribution. So far DLPrice has signs of stationarity.
-
-
-```{r, results='asis',echo=FALSE}
+#########################       TASK A        ################################
+```{r}
 plot(Date.in,LogPrice.in,type='l',main ="Plot of LogPrice",
      xlab="Date",ylab="LogPrice")
 grid()
@@ -110,25 +95,9 @@ sum=rbind(sum,kurt)
 ```{r}
 knitr::kable(sum,format='pipe',caption = "Summary Statistics of DLPrice and LogPrice")
 ```
-## Stationarity Tests
-### ADF Test
-To further investigate the nature of LogPrice and DLPrice, we perform ADF, PP and KPSS tests to determine the stationarity and unit roots of the time series, which are shown in Table 2. The general form of the Time series process as of now can be written as X$_{t}$=$\alpha$+$\phi$X$_{t-1}$+$\epsilon$$_{t}$.The ADF test is a test for unit roots. The presence of a unit root means that the time series is nonstationary. The ADF builds upon the DF test by including a higher order autoregressive process. This is because if the time series variable is autocorrelated such that the error term does not exhibit white noise properties the tests become invalid. The ADF test regresses the first differenced time series variable in time t on a mean, lagged one period of its level, lags of itself of period p, and an error term. The p lags of itself are included to capture the autocorrelation. We can choose the number of lags, p, using Akaike’s Information Criteria and this chooses the optimal number of lags to best fit the time series. Because I suspect that there is drift in both DLPrice and LogPrice, I use this setting for the ADF test, which adds a drift term/intercept or mean to the regression.  DLPrice$_t$= $\alpha$+$\gamma$LogPrice$_{t-1}$+$\Sigma$$_{i=1}$${^p}$ $\phi$${_i}$ DLPrice$_{t-i}$+$\epsilon$$_t$ for LogPrice and $\Delta$DLPrice$_t$= $\alpha$+$\gamma$DLPrice$_{t-1}$+$\Sigma$$_{i=1}$${^p}$ $\phi$$_i$ $\Delta$DLPrice$_{t-i}$+$\epsilon$${_t}$ for DLPrice.When we run the regression, we find estimates for the composite parameter Gamma, (phi – 1, as we difference by subtracting our level variable in t-1 from both sides), and we test these estimates to be statistically different from zero. By writing the ADF like this the Null hypothesis: the time series has a unit root, means that gamma equals zero so phi from the original time series equals one and thus there is a unit root. The alternative hypothesis is that Beta is less than zero, the time series has no unit root. 
-We see the value of the test statistic for the ADF test on LogPrice is -0.246, well within the 5% critical value of -2.87. We fail to reject the null hypothesis, this process, LogPrice, contains a unit root and thus is stationary.
-The test statistic for DLPrice is -12.1, far within the range of rejection (greater than the 5% CV, -2.87, in absolute terms). This provides evidence for rejection of the Null hypothesis, DLPrice has no unit root and so is a stationary process.
-
-### PP Test 
-The Phillips-Perron (PP) test, like the ADF test, is a unit root test. The PP test corrects for autocorrelation and heteroscedasticity in the errors by some modification to the test statistics, hence the PP test is robust. The equation is formulated using the ARMA model. Some process, either strictly AR, strictly MA or ARMA is used to model the error term. The PP test thus removes the need for lags of the differenced process. Again, I will use the PP test with constant intercept. I will use the “Z-tau” version of the test statistic. 
-The test statistic from the PP test for LogPrice is -0.68 which is outside the rejection range at the 5% level, -2.87, thus we fail to reject the Null hypothesis, LogPrice has a unit root and is nonstationary at the 5% level.
-The Test statistic for DLPrice is -13.9764, which is within the rejection range of -2.87 at the 5% significance level. We reject the null hypothesis in favour for the alternative hypothesis. DLPrice has no unit root and is thus stationary.
-
-### KPSS Test
-The KPSS test is a test of stationarity around a trend. It decomposes the mean from a deterministic component/trend and the mean behaves as an AR process. The error term of this AR process is tested for its variance. The null hypothesis, the variance of the mean error term is zero in which case the intercept is constant and is thus trend stationary. The alternative hypothesis, the variance of the intercept error is greater than zero which indicates a non-constant mean and thus trend nonstationartity. The KPSS test for LogPrice indicates nonstationartity. The test statistic, 6.39, is far greater than the 5% critical value of 0.46 thus we reject the null hypothesis in favour of the alternative. LogPrice is trend nonstationary.
-For DLPrice, the KPSS test statistics, 0.09, is within any critical value range hence we fail to reject the null hypothesis which indicates trend stationarity.
-Combining the results from the KPSS ADF and PP test for LogPrice, the evidence points overwhelmingly to it being a nonstationary process. They also show that DLPrice is trend stationary. What this means for the dataset is that LogPrice, the log of CPI of energy, is integrated of order 1, as the first differenced series becomes stationary. We move forward by finding an ARMA model for DLPrice.
-
-
   
-        
+  
+  TASK B        
   
 ```{r,include=FALSE}
 summary(ur.df(LogPrice.in,type='drift',lags=20,selectlags='AIC'))                   #ADF test for Log Price
@@ -171,17 +140,15 @@ T_stats=rbind(T_stats,TestFrame)
 
 
 
-```{r echo=FALSE, results='asis'}
+```{r echo=TRUE, fig.width=9}
 
 knitr::kable(T_stats ,"pipe",
              col.names=c("LogPrice","DLPrice","1%","5%","10%"),caption="Test Statistics for Stationarity Tests")
 ```
-### Model Selection
-
-To find the best suited ARMA model for DLPrice, we use a tool called Akaike’s Information Criteria to optimise the number of MA and AR lags in the model. The AIC is an estimator of the prediction error of comparative ARMA models and is Log-likelihood based. The more lags included in the information criteria incurs a penalty. The AIC finds a balance between overfitting and underfitting the model. The equation is as such: -2 log L($\hat\theta$) + 2K. K in the equation is the sum of the amount of MA and AR lags (p and q) and 2, obtained from the mean and variance. As the number of parameters in the model increases the AIC value increases which is the opposite of the objective, which is to minimise the function (have the smallest value (greatest negative)), hence overfitting incurs a penalty. I calculate the AIC for ARMA models (0,0) to (5,5) and input the value into a matrix. From the code, it can be shown the ARMA model which minimises the AIC value is an ARMA (2,5). Thus the model becomes DLPrice$_t$=${\alpha}$+${\phi}$$_1$ DLPrice$_{t-1}$+${\phi}$$_2$ DLPrice$_{t-2}$+${\theta}$$_1$ ${\epsilon}$$_{t-1}$+${\theta}$$_2$ ${\epsilon}$$_{t-2}$+${\theta}$$_3$${\epsilon}$$_{t-3}$+${\theta}$$_4$ ${\epsilon}$$_{t-4}$+${\theta}$$_5$ ${\epsilon}$$_{t-5}$+${\epsilon}$$_t$
 
 
 
+Task C
 ```{r,include=FALSE}
 Find.Best.Model = function(DLPrice.in){
   pLag=0:5
@@ -212,12 +179,10 @@ IC=data.frame(IC)
 rownames(IC)=c('0','1','2','3','4','5')
 colnames(IC)=c('0','1','2','3','4','5')
 ```
-```{r,results='asis',echo=FALSE}
+```{r}
 knitr::kable(IC,"pipe",caption = "Table of AIC")
 ```
-## Model Diagnostics
-We run model diagnostics such as Visualisation of the ARMA residuals, ACF plots and Time Series Plots of the Residuals and the Ljung-Box test. We visualise and test the residuals of the ARMA process to inform us of its properties. The properties we are looking for is that of White Noise, stationarity, constant mean over time, constant variance over time and no autocovariance. When looking at the ACF plot we are looking for no autocovariance among the lags of the residuals, this means the plots will lie below the significance value. With the Time Series Plot, we are looking for constant mean and constant variance. These are the typical stationary properties which are easy to see. We are looking for deviations of DLPrice around some mean which do not increase over time. The Ljung-Box test tests for independent distribution, or more specifically the absence of serial autocorrelation. The null hypothesis is that the data is independently distributed, it does not exhibit autocorrelation. The alternative hypothesis is that the residuals are not independently distributed, they are autocorrelated. We can test for various degrees of autocorrelation by increasing the number of lags in the Ljung-Box test. For the Ljung-Box test we can either use a unique statistic, the Q statistic or we can simply use the p-value.
-Looking at the Time Series Plot, it indicates stationarity. It deviates around a mean and there is no pattern among the variance of such deviations. The ACF plot of the lagged residuals indicates that none of the lags are significantly correlated with each other. The Ljung-box test of lags 20,30 and 50 outputs p-values of 0.8253, 0.8341 and 0.9354 respectively. All these p-values are greater than the 1%, 5% and 10% significance levels (0.01,0.05,0.1) hence we fail to reject the null. It is like saying there is an 82% chance of being wrong when you reject the null. The failure to reject the null means that the residuals are independently distributed and hence there is no autocorrelation among them.  Using the three methods above we can conclude that the residuals closely resemble White Noise. I have a satisfactory amount of AR and MA lags in the model which reduces the autocorrelation in the residuals. 
+#########################       TASK D        ################################
 ```{r,include=FALSE}
 best.p=Find.Best.Model(DLPrice.in)$best.p
 best.q=Find.Best.Model(DLPrice.in)$best.q
@@ -239,19 +204,16 @@ LBconclusion=data.frame(Lag20="Independently Distributed",Lag30="Independently D
                         Lag50="Independently Distributed",row.names = "Conclusion")
 Ljung_Box=rbind(Ljung_Box,LBconclusion)
 ```
-```{r,results='asis',echo=FALSE}
+```{r}
 knitr::kable(Ljung_Box,"pipe",caption = "Ljung-Box Test on DLPrice Residuals")
 
 ```
-## Forecasting
-Now, the purpose of splitting the original data set into an in sample and out of sample portion comes to light. Using the in-sample data set we can forecast 10 periods in the future, the same amount as the out of sample dataset. We can then compare our forecasted values to the exact values of the out of sample dataset. We can use statistics such as MAE, MSE, MAPE and Percentage Correct Sign Predictions to measure the accuracy of our forecast and hence the ARMA model. To begin our forecast, we solve forward the ARMA model. We take the time series process from time t and move it forward to time t+1. Hence the ARMA(2,5) model in time period t+1 becomes DLPrice$_{t+1}$=${\alpha}$+${\phi}$$_1$ DLPrice$_t$+${\phi}$$_2$ DLPrice$_{t-1}$+${\theta}$$_1$${\epsilon}$$_t$+${\theta}$$_2$${\epsilon}$$_{t-1}$+${\theta}$$_3$${\epsilon}$$_{t-2}$+${\theta}$$_4$${\epsilon}$$_{t-3}$+${\theta}$$_5$${\epsilon}$$_{t-4}$+${\epsilon}$$_{t+1}$. We can call this function DLPrice$_{t,1}$.When we take the expectation of this equation, we get a forecasted value one period in the future. But the final term E(${\epsilon}$$_{t+1}$ )=0 because conditional to t, to the current period, we do not know future values. However, the other errors of time t and its lags remain as we take expectation, because these are known and measured from our dataset, we know these conditional to time t. When we forecast two periods in the future we get DLPrice$_{t+2}$$=$${\alpha}$+${\phi}$$_1$ DLPrice$_{t+1}$+${\phi}$$_2$ DLPrice$_t$+${\theta}$$_1$${\epsilon}$$_{t+1}$+${\theta}$$_2$${\epsilon}$$_t$+${\theta}$$_3$${\epsilon}$$_{t-1}$+${\theta}$$_4$${\epsilon}$$_{t-2}$+${\theta}$$_5$ ${\epsilon}$$_{t-3}$+${\epsilon}$$_{t+2}$. We also take the expectation of this equation such that E(DLPrice$_{t+2}$)=${\alpha}$+${\phi}$$_1$ E(DLPrice$_{t+1}$)+${\phi}$$_2$ E(DLPrice$_{t}$)+${\theta}$$_2$ E(${\epsilon}$$_t$)+${\theta}$$_3$ E(${\epsilon}$$_{t-1}$)+${\theta}$$_4$ E(${\epsilon}$$_{t-2}$)+${\theta}$$_5$ E(${\epsilon}$$_{t-3}$). Now we have the expectation of the time series process which has already been forecasted. Here, we can simply input the previous forecast into the equation. After 5 periods of forecasting the moving averages from the ARMA model disappears as the expectations of such parameters are equal to zero. At this point we are left with the AR process of previous forecasts. We repeat this for the 10 periods to make up the amount of the out of sample dataset.
-Now comparing the forecast to the exact values. The MSE, mean squared error, whose equation is MSE=  1/N ${\Sigma}$$_{s=1}$$^N$ (DLPrice$_{t+s}$ - DLPrice$_{t,s}$ )$^2$, where t,s indicates a forecasting of DLPrice at time s in the out of sample period conditional to our knowledge at time t. The value of MSE from our forecast is 0.007, which indicates a close fit to the out of sample data and hence an accurate forecast and accurate ARMA model. The mean absolute error, MAE, is the same as the MSE but instead of squaring the forecast error defined as DLPrice$_{t+s}$-DLPrice$_{t,s}$ , we take its absolute value. It is expected that the MAE is larger than the MSE due to it not being squared, as squaring a value less than one creates an even smaller value. The MAE value of 0.053 also indicates a close fit to the out of sample data and hence and accurate ARMA forecast. The MAPE is the percent based forecast error measurement version MAE. It can be calculated by dividing the forecast error by the out of sample data point, taking its absolute and finding the mean. A higher MAPE indicates greater accuracy. I calculate an MAPE value of 95.45% which is a higher level of accuracy. Lastly, I will measure the accuracy of the forecast using Percentage Correct sign Predictions. As it says in the name, it measures the average accuracy of the sign of a predicted value. The formula is as such %CSP=1/N ${\Sigma}$$_{s=1}$$^N$ z$_{t+s}$     ,where z$_{t+s}$=1 if DLPrice$_{t+s}$* DLPrice$_{t,s}$ >0,and z$_{t+s}$=0 if otherwise. The logic behind this is if DLPrice$_{t+s}$ *DLPrice$_{t,s}$ >0 it is only possible such that both values are positive or both values are negative in which case it predicted the correct sign and adds onto the formula. The Percentage correct sign predictions is 70%, quite high but it suggest that our model could be improved.
-
+#########################       TASK E        #################################
 ```{r,include=FALSE}
 forecast = predict(fit.best,n.ahead=10)
 DLPriceforecast=forecast$pred
 ```
-```{r,results='asis',echo=FALSE}
+```{r}
 matplot(cbind(DLPrice.out,DLPriceforecast),col=1:2,type='l',ylab='DLPrice',xlab = 'Time',main="Forecasts")
 legend("topright",legend=c("True Value","Forecast"),col = 1:2,lty = 1:2)
 grid()
@@ -282,7 +244,7 @@ pct.correctsign=sum(correctsign)/outsamplesize
 print(pct.correctsign)
 ```
 
-
+############################# TASK F ##########################################
 
 ```{r,include=FALSE}
 
@@ -316,366 +278,32 @@ for (series_id in series_ids) {
   KPSSStationary=summary(ur.kpss(log(data$value),type="mu",lags="short"))  
   PPStationary=summary(ur.pp(log(data$value),type = "Z-tau", model = "constant", lags = "short"))
   ADFStationary=summary(ur.df(log(data$value),type="drift",lags=20,selectlags = "AIC"))
-  Stationarity=data.frame(LogFood=rbind(ADFStationary@teststat[1],PPStationary@teststat[1],
-                                        KPSSStationary@teststat[1]),row.names = c("ADF","PP","KPSS"))
+  Stationarity=data.frame(LogFood=rbind(ADFStationary@teststat[1],PPStationary@teststat[1],KPSSStationary@teststat[1]),row.names = c("ADF","PP","KPSS"))
   Stationarity2=cbind(Stationarity2,Stationarity)
 }
 COCV=data.frame("1pct"=-4.07,"5pct"=-3.37,"10pct"=-3.03,Hypothesis="Reject",Conclusion="stationary")
 cointegrationdata=cbind(cointegrationdata,COCV)
-```
-```{r,include=FALSE}
-LogFood <- fredr("PIEAFD01GBM661N",
-              observation_start = start_date,
-              observation_end = end_date)
-LogFood$value=log(LogFood$value)
-```
-
-```{r,include=FALSE}
-library(quantmod)
-length(LogPrice.in2)
-length(LogFood$value)
-Logfood=LogFood$value
-DLFood=diff(Logfood)
-DLPrice.in2=diff(LogPrice.in2)
-
-summary(ur.kpss(DLFood,type="mu",lags="short"))  
-summary(ur.pp(DLFood,type = "Z-tau", model = "constant", lags = "short"))
-summary(ur.df(DLFood,type="drift",lags=20,selectlags = "AIC"))
-
-
-DLFood.lag1=Lag(DLFood,k=1)
-DLFood.lag2=Lag(DLFood,k=2)
-DLPrice.lag1=Lag(DLPrice.in2,k=1)
-DLPrice.lag2=Lag(DLPrice.in2,k=2)
-residual.lag1=Lag(residual[-1],k=1)
-ecm=summary(ECM.general<-lm(DLPrice.in2~DLPrice.lag1+DLPrice.lag2+DLFood+DLFood.lag1+DLFood.lag2+residual.lag1))
-
-D2LPrice=diff(DLPrice.in2)
-D2LogFood=diff(DLFood)
-summary(ur.kpss(D2LogFood,type="mu",lags="short"))  
-summary(ur.pp(D2LogFood,type = "Z-tau", model = "constant", lags = "short"))
-summary(ur.df(D2LogFood,type="drift",lags=20,selectlags = "AIC"))
-```
-
-## Cointegration
-Using the Federal Reserve of Economic Data, I found a time series which is cointegrated with Log CPI of Energy in the UK. The dataset is Log PPI of Total Food Produced in the UK (LogFood). I will be utilising the Engle-Granger Two-step Procedure. The first step of the procedure is to make sure both Time series are integrated of the same order. We know from the beginning of this report that LogPrice is integrated of order 1. I difference the data set for LogFood, called DLFood, and initially plot this as a line graph. Initial inspection leads to stationarity. The points cross the mean often, variance of deviations from mean do not have a pattern. However, I reinforce this inspection with the ADF and PP test which provides evidence for absence of unit roots and hence stationarity. The ADF test statistic of -3.7 is within the range of rejection at any significance levels. The Test statistic for the PP test, -7.5 is also within all rejection ranges. Hence, we reject the null, DLFood has no unit root. The KPSS test which further provides evidence for stationarity, produces a test statistic of 0.15 which is not within any significant rejection zones, hence we fail to reject the null, DLFood is stationary. Further testing on the Second Difference of LogFood, draws the conclusion it is also stationary. Now I know that LogFood is also integrated of order 1.
- I then test for cointegration with these datasets. Because LogFood was not available for the same time periods of LogPrice, I had to trim the LogPrice sample size from January 2009 to January 2022. I then ran a regression of LogPrice on LogFood and captured the residuals. I then perform an ADF test on these residuals with no drift to inspect for stationarity. If such residuals are stationary then a linear combination of the two series are stationary (the two series are cointegrated), hence the residuals exhibit white noise properties, and any linear combination of the cointegrating vector will also be stationary. If the residuals are nonstationary then the two series are not cointegrated. The residuals from the regression LogPrice$=$${\beta}$$_0$+${\beta}$$_1$ LogFood+${\epsilon}$ which have been put through the ADF test produce a test-statistic of -3.41 which is greater in absolute terms than the adjusted 5% and 10% significance levels. These levels are adjusted from the original critical values of the ADF test as now we work on estimates of the residuals. The conclusion here is rejection of the null hypothesis, the residuals have no unit root and is thus stationary. In the greater context, this means LogFood and LogPrice are cointegrated. We can then proceed to constructing the general error correction model. 
-```{r,results='asis',echo=FALSE}
-plot(LogFood$date,LogFood$value,type='l',
-     xlab="Date",
-     ylab="LogFood",
-     main="Plot of LogFood")
-    grid()
-plot(LogFood$date[-1], DLFood,type='l',
-     ylab="DLFood",
-     xlab="Date")
-```
-```{r,results='asis',echo=FALSE}
+```{r}
 knitr::kable(cointegrationdata,"pipe",
              col.names=c("Series_id","T-value","1%","5%","10%","Hypothesis","Conclusion"),caption="Cointegration Test: LogPrice and LogFood")
 knitr::kable(Stationarity2,"pipe",
              col.names = c("1%","5%","10%","LogFood"),caption="Stationarity Tests for LogFood")  
 ```
-The methodology of the error correction model (ECM) accounts for the loss of long-run relationships in first differenced equilibrium models. The ECM works via the Granger Representation Theorem: Cointegrated variables must be bound by a mechanism that drives those variables back to their long-run equilibrium relationship after a shock. The mechanism is called Error Correction. The definition of the Long Run in this context is that the variables have converged upon some value and no longer changes. The error correction model consists of regressing DLPrice on p lags of DLPrice, DlogFood and its q lags and the lagged residual from the previous static regression in the first step. The general form of the equation: DLPrice$_t$=${\alpha}$+${\Sigma}$$_{i=1}$$^p$ ${\beta}$$_i$ DLPrice$_{t-i}$+${\Sigma}$$_{i=0}$$^q$ ${\rho}$$_i$ DLogFood$_{t-i}$+${\gamma}$(${\hat\epsilon}$$_{t-1}$)+v$_t$. Where,${\epsilon}$$_{t-1}$=LogPrice$_{t-1}$-${\beta}$$_0$-${\beta}$$_1$ LogFood$_{t-1}$. The long run relationship in equilibrium between DLPrice and DlogFood is described by ${\beta}$$_1$in the static regression in the first step and the short run relationship is described by ${\rho}$$_i$in the ECM. The error correction term is (${\hat\epsilon}$$_{t-1}$ ) , the residual from the static regression from the previous period. The static regression captures the long run relationship and the coefficient Infront, gamma, describes the speed of adjustment, which is assumed to be negative. The logic for this term is that, in the Long Run where variables do not change, the error correction term is equal to zero. However, if the Value of DLPrice is greater than its equilibrium value so that the error correction term is greater than 0, it is corrected by gamma such that DLPrice in the current period decreases towards its equilibrium value.
-We can estimate this ECM using a linear regression and test the coefficients for statistical significance using a t-test. From the table, we can identify that the long run relationship between DLPrice and DLFood is statistically significant at all levels. When last period has a 1% deviation from equilibrium , DLPrice changes by -0.112%. The short run relationship between DLPrice and DLFood, with no lags, is also statistically significant at the 5% level. A 1% increase in the change of Log of price of total food manufactured coincides with a 0.56% rise in the change of Log energy prices. Furthermore, The change in log energy prices from the previous period is statistically significant such that an increase by 1%, increases the change in log prices in period t by 0.4%. All other variables are not significant. The complete ECM model: DLPrice$_t$=0.011+0.404DLPrice$_{t-1}$-0.032DLogPrice$_{t-2}$+0.565DLFood-0.290DLFood$_{t-1}$+0.219DLFood$_{t-2}$-0.112(${\hat\epsilon}$$_{t-1}$ )+v$_t$. I am satisfied by this conclusion, by using logic and macroeconomic theory, specifically the Basic New Keynesian Model, we understand that increasing energy prices, hence increasing DLPrice, increases marginal costs for a firm and in order to maintain their markups, firms must increase prices and as such PPI of total manufactured food/DLFood increases also. Evidence for this is given by the positive coefficient on DLFood.
-```{r,results='asis',echo=FALSE}
-knitr::kable(ecm$coefficients,'pipe',caption="Error Correction Model Coefficients")
-```
 
-
-
-
-
-# Conclusion
-
-In this paper, we have seen that the Log of Consumer Price Index of Energy in the UK is integrated of order which means on the CPI of Energy we must build an ARIMA model. I find that the best fitting ARMA model for Log CPI of Energy is an ARMA(2,5). I further tested this theory by using model diagnostics to compare the residual to White noise, to which it was relatively close to. Additionally, I evaluate its predictive power in comparison to the out of sample dataset. I find that its forecasting capabilities is very accurate, within 95% accuracy on average. I can conclude that the ARMA(2,5) model for Log CPI of Energy in the UK, is a very good fit. Additionally, I was able to find an equilibrium relationship with Log PPI of Total Manufactured Food through cointegration techniques. 
-
-# References
-•	Frequently asked questions on energy security, 16th November 2022 https://www.iea.org/articles/frequently-asked-questions-on-energy-security
-
-•	Nils Rokke, How Ukraine Invasion is changing Europe’s Energy Plans, 30th May 2022 https://www.forbes.com/sites/nilsrokke/2022/05/30/how-ukraine-invasion-is-changing-europes-energy-plans/?sh=6da340d36d17
-
-•	Organization for Economic Co-operation and Development, Consumer Price Index: Energy for United Kingdom [GBRCPIENGMINMEI], retrieved from FRED, Federal Reserve Bank of St. Louis; https://fred.stlouisfed.org/series/GBRCPIENGMINMEI, April 13, 2023.
-
-•	Organization for Economic Co-operation and Development, Producer Prices Index: Economic Activities: Total Manufacture of Food Products for the United Kingdom [PIEAFD01GBM661N], retrieved from FRED, Federal Reserve Bank of St. Louis; https://fred.stlouisfed.org/series/PIEAFD01GBM661N, April 14, 2023.
-
-•	Producer price inflation, UK: December 2022 including services, October to December 2022, 25th January 2023. https://www.ons.gov.uk/economy/inflationandpriceindices/bulletins/producerpriceinflation/december2022includingservicesoctobertodecember2022
-
-•	Paul Bolton, Imports of Fossil Fuels from Russia, 13th March 2023, https://commonslibrary.parliament.uk/research-briefings/cbp-9523/
-
-•	Office for National Statistics, Costs of Living Insights: Energy, 6th April 2023. https://www.ons.gov.uk/economy/inflationandpriceindices/articles/costoflivinginsights/energy
-
-
-# Appendix
-## R Code
-```{r,echo=TRUE,eval=FALSE,fig.width=1}
-library(readxl)
-library(zoo)
-library(e1071)
-library(tseries)
-library(urca)
-library(lmtest)
-library(dplyr)
-library(urca)
-library(knitr)
-library(kableExtra)
-library(tidyverse)
-library(broom)
-library(kableExtra)
-library(ggplot2)
-
-dataset = read_xls("/Users/alexdubovsky/Documents/Economics/Year 3/Macroeconometrics/Project_Data.xls")
-Price = dataset$Value
-LogPrice=log(Price)
-DLPrice=diff(LogPrice)
-Date = dataset$Time
-
-length(DLPrice)
-length(LogPrice)
-length(Price)
-length(Date)
-Price = Price[-1]
-LogPrice=LogPrice[-1]
-Date=Date[-1]
-
-LogPrice.in=LogPrice[1:385]
-LogPrice.out=LogPrice[386:395]
-DLPrice.in=DLPrice[1:385]
-DLPrice.out=DLPrice[386:395]
-Date.in =Date[1:385]
-Date.out=Date[386:395]
-
-insample = data.frame(Date= Date.in,
-                      LogPrice=LogPrice.in,
-                      Differenced=DLPrice.in)
-
-Dateframe= data.frame(Date= Date,
-                         LogPrice = LogPrice,
-                      DLPrice=DLPrice)
-
-#########################       TASK A        ################################
-
-plot(Date.in,LogPrice.in,type='l', main="Log Price")
-grid()
-plot(Date.in,DLPrice.in,type='l', main="Differenced Log Price")
-grid()
-
-hist(LogPrice.in,50, main="Log Price", xlab="")
-hist(DLPrice.in,50, main="Differenced Log Price", xlab="")
-
-boxplot(LogPrice.in, horizontal = TRUE)
-boxplot(DLPrice.in, horizontal =TRUE)
-
-acf(LogPrice.in)
-acf(DLPrice.in)
-
-skew1=skewness(LogPrice.in)
-kurt1=kurtosis(LogPrice.in)
-
-skew2=skewness(DLPrice.in)
-kurt2=kurtosis(DLPrice.in)
-
-skew=data.frame(LogPrice=skew1,DLPrice=skew2,
-                row.names="Skewness")
-kurt=data.frame(LogPrice=kurt1,DLPrice=kurt2,
-                row.names="Kurtosis")
-sum=data.frame(unclass(summary(insample$LogPrice)),
-               unclass(summary(insample$Differenced)),
-               check.names=FALSE)
-colnames(sum)=c("LogPrice","DLPrice")
-
-sum=rbind(sum,skew)
-sum=rbind(sum,kurt)
-knitr::kable(sum,format='pipe')
-
-#########################       TASK B        ################################
-
-summary(ur.df(LogPrice.in,type='drift',lags=20,selectlags='AIC'))                   #ADF test for Log Price
-summary(ur.pp(LogPrice.in, type = "Z-tau", model = "constant", lags = "short"))     #PP test for Log Price
-summary(ur.kpss(LogPrice.in, type="mu", lags="short"))                              #KPSS test for Log Price
-
-summary(ur.df(DLPrice.in,type='drift',lags=20,selectlags='AIC'))                    #ADF test for Differenced Log Price
-summary(ur.pp(DLPrice.in, type = "Z-tau", model = "constant", lags = "short"))      #PP test for Differenced Log Price
-summary(ur.kpss(DLPrice.in, type="mu", lags="short"))                               #KPSS test for Differenced Log Price
-
-ADFLogPrice = summary(ur.df(LogPrice.in,type='drift',lags=20,selectlags='AIC')) 
-ADFDLPRICE=summary(ur.df(DLPrice.in,type='drift',lags=20,selectlags='AIC'))  
-PPLogPrice=summary(ur.pp(LogPrice.in, type = "Z-tau", model = "constant",
-                         lags = "short"))
-PPDLPrice=summary(ur.pp(DLPrice.in, type = "Z-tau", model = "constant", 
-                        lags = "short")) 
-KPSSLogPrice = summary(ur.kpss(LogPrice.in, type="mu", lags="short"))   
-KPSSDLPrice=summary(ur.kpss(DLPrice.in, type="mu", lags="short")) 
-
-ADF = data.frame(LogPrice=round(ADFLogPrice@teststat[1],2),
-                 DLPrice=round(ADFDLPRICE@teststat[1],2),
-                 "1pct"=round(ADFLogPrice@cval[1],2),
-                 "5pct"=round(ADFLogPrice@cval[3],2),
-                 "10pct"=round(ADFLogPrice@cval[5],2),
-                 row.names=c("ADF"))
-PP=data.frame(LogPrice=round(PPLogPrice@teststat[1],2),
-              DLPrice=round(PPDLPrice@teststat[1],2),
-              "1pct"=round(PPLogPrice@cval[1],2),
-              "5pct"=round(PPLogPrice@cval[2],2),
-              "10pct"=round(PPLogPrice@cval[3],2),
-              row.names=c("PP"))
-KPSS=data.frame(LogPrice=round(KPSSLogPrice@teststat[1],2), 
-                DLPrice=round(KPSSDLPrice@teststat[1],2),
-                "1pct"=round(KPSSLogPrice@cval[1],2),
-                "5pct"=round(KPSSLogPrice@cval[2],2),
-                "10pct"=round(KPSSLogPrice@cval[3],2),
-                row.names = c("KPSS"))
-
-LogPriceADF=ur.df(LogPrice.in,type='drift',lags=20,selectlags='AIC')
-
-T_stats=rbind(ADF,PP,KPSS)
-TestFrame=data.frame(LogPrice="Nonstationary",DLPrice="Stationary","1pct"=NA,
-                     "5pct"=NA,"10pct"=NA,row.names = "Conclusion")
-T_stats=rbind(T_stats,TestFrame)
-knitr::kable(T_stats ,"pipe",
-             col.names=c("LogPrice","DLPrice","1%","5%","10%"))
-
-#########################       TASK C        ################################
-
-Find.Best.Model = function(DLPrice.in){
-pLag=0:5
-qLag=0:5
-np=length(pLag)
-nq=length(qLag)
-IC = matrix(data=NA,np,nq)
-for(i in 1:np){
-    for(j in 1:nq){
-     p= pLag[i]
-     q= qLag[j]
-    
-    DLPriceIC= arima(DLPrice.in, order=c(p,0,q))
-    IC[i,j]= AIC(DLPriceIC)
-    }
-  }
-  idx = which(IC==min(IC),arr.ind = TRUE)
-  best.p=idx[1]-1
-  best.q=idx[2]-1
-  return(list(best.p=best.p,best.q=best.q,IC=IC))
-  
-}
-Find.Best.Model(DLPrice.in) 
-IC=Find.Best.Model(DLPrice.in)$IC
-IC=data.frame(IC)
-rownames(IC)=c('0','1','2','3','4','5')
-colnames(IC)=c('0','1','2','3','4','5')
-knitr::kable(IC,"pipe",caption = "Table of AIC")
-#########################       TASK D        ################################
-best.p=Find.Best.Model(DLPrice.in)$best.p
-best.q=Find.Best.Model(DLPrice.in)$best.q
-
-fit.best = arima(DLPrice.in,order=c(best.p,0,best.q))
-print(fit.best)
-
-my.resid = resid(fit.best)
-plot(Date.in, my.resid, type='l', xlab="Date", ylab="", main="Residuals")
-acf(my.resid)
-Lag20=Box.test(my.resid,type='Ljung-Box',lag=20, fitdf=best.p+best.q)
-Lag30=Box.test(my.resid,type='Ljung-Box',lag=30, fitdf=best.p+best.q)
-Lag50=Box.test(my.resid,type='Ljung-Box',lag=50, fitdf=best.p+best.q)
-
-Ljung_Box=data.frame(Lag20=Lag20$p.value,Lag30=Lag30$p.value,Lag50=Lag50$p.value,
-                     row.names = "P-value")
-LBconclusion=data.frame(Lag20="Independently Distributed",Lag30="Independently Distributed",
-                        Lag50="Independently Distributed",row.names = "Conclusion")
-Ljung_Box=rbind(Ljung_Box,LBconclusion)
-knitr::kable(Ljung_Box,"pipe",caption = "Ljung-Box Test on DLPrice Residuals")
-
-#########################       TASK E        #################################
-
-forecast = predict(fit.best,n.ahead=10)
-DLPriceforecast=forecast$pred
-matplot(cbind(DLPrice.out,DLPriceforecast),col=1:2,type='l',xlab='Time',
-        ylab="DLPrice")
-legend("topright",legend=c("True Value","Forecast"),col = 1:2,lty = 1:2)
-grid()
-outsample=data.frame(Date=Date.out,
-                        LogPrice=LogPrice.out,
-                        Differenced=DLPrice.out)
-
-forecasterror=DLPrice.out-DLPriceforecast 
-FORECAST=data.frame(Date=Date.out,
-                    ForecastDLPrice=DLPriceforecast,
-                    True=DLPrice.out,
-                    Deviation = forecasterror)
-
-outsamplesize = length(DLPrice.out)
-MSE = sum((forecasterror^2)/outsamplesize)
-print(MSE)                        
-MAE = sum((abs(forecasterror))/outsamplesize)
-print(MAE)
-MAPE = 100*(sum(abs(forecasterror/DLPrice.out))/outsamplesize)
-print(MAPE)
-
-correctsign=rep(0,outsamplesize)
-index=DLPriceforecast*DLPrice.out>0
-correctsign[index]=1
-pct.correctsign=sum(correctsign)/outsamplesize
-print(pct.correctsign)
-
-############################# TASK F ##########################################
-# Load required library
-library(fredr)
-
-fredr_set_key("1a594be7f2e4daca274626ccd63c7038")
-
-series_ids <- c("PIEAFD01GBM661N")
-start_date=as.Date("2009-01-01")
-end_date=as.Date("2022-01-01")
-
-cointegrationdata <- data.frame()
-Stationarity=data.frame()
-Stationarity2=data.frame("1pct"=c("-3.44","-3.449","0.347"),
-                                  "5pct"=c("-2.87","-2.87",0.463),
-                         "10pct"=c("-2.57","-2.57","0.574"),
-                         row.names = c("ADF","PP","KPSS"))
-LogPrice.in2=LogPrice.in[228:384]
-for (series_id in series_ids) {
-  data <- fredr(series_id,
-                observation_start = start_date,
-                observation_end = end_date)
-  reg=lm(LogPrice.in2~log(data$value))
-  residual=reg$residuals
-  coresid=summary(ur.df(residual,type = "none",lags=20,selectlags = "AIC"))
-  
-  print(paste("series_id:", series_id))
-  print("coresid@teststat[1]:")
-  print(coresid@teststat[1])
-  
-  cointegrationdata=rbind(cointegrationdata,
-                          data.frame(variable=series_id,
-                                     teststat=coresid@teststat[1]))
-  KPSSStationary=summary(ur.kpss(log(data$value),type="mu",lags="short"))  
-  PPStationary=summary(ur.pp(log(data$value),
-                             type = "Z-tau", model = "constant", lags = "short"))
-  ADFStationary=summary(ur.df(log(data$value),
-                              type="drift",lags=20,selectlags = "AIC"))
-  Stationarity=data.frame(LogFood=rbind(ADFStationary@teststat[1],
-                                        PPStationary@teststat[1],
-                                        KPSSStationary@teststat[1]),
-                          row.names = c("ADF","PP","KPSS"))
-  Stationarity2=cbind(Stationarity2,Stationarity)
-}
-COCV=data.frame("1pct"=-4.07,"5pct"=-3.37,"10pct"=-3.03)
-cointegrationdata=cbind(cointegrationdata,COCV)
-knitr::kable(Stationarity2,"pipe",
-             col.names = c("1%","5%","10%","LogFood"))  
-knitr::kable(cointegrationdata,"pipe")
-
+```{r,include=FALSE}
 LogFood <- fredr("PIEAFD01GBM661N",
               observation_start = start_date,
               observation_end = end_date)
 LogFood$value=log(LogFood$value)
-
+```
+```{r}
 plot(LogFood$date,LogFood$value,type='l',
      xlab="Date",
-     ylab="LogFood")
+     ylab="LogFood",
+     main="Plot of LogFood")
     grid()
-
+```
+```{r,include=FALSE}
 library(quantmod)
 length(LogPrice.in2)
 length(LogFood$value)
@@ -686,10 +314,7 @@ DLPrice.in2=diff(LogPrice.in2)
 summary(ur.kpss(DLFood,type="mu",lags="short"))  
 summary(ur.pp(DLFood,type = "Z-tau", model = "constant", lags = "short"))
 summary(ur.df(DLFood,type="drift",lags=20,selectlags = "AIC"))
-plot(LogFood$date[-1], DLFood,type='l',
-     ylab="DLFood",
-     xlab="Date")
-
+plot(LogFood$date[-1], DLFood,type='l')
 
 DLFood.lag1=Lag(DLFood,k=1)
 DLFood.lag2=Lag(DLFood,k=2)
@@ -700,10 +325,11 @@ ecm=summary(ECM.general<-lm(DLPrice.in2~DLPrice.lag1+DLPrice.lag2+DLFood+DLFood.
 
 D2LPrice=diff(DLPrice.in2)
 D2LogFood=diff(DLFood)
-### tests to make sure LogFood is only integrated of order 1#####
 summary(ur.kpss(D2LogFood,type="mu",lags="short"))  
 summary(ur.pp(D2LogFood,type = "Z-tau", model = "constant", lags = "short"))
 summary(ur.df(D2LogFood,type="drift",lags=20,selectlags = "AIC"))
-
-knitr::kable(ecm$coefficients,'pipe')
 ```
+```{r}
+knitr::kable(ecm$coefficients,'pipe',caption="Error Correction Model Coefficients")
+```
+
