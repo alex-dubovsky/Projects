@@ -3,8 +3,10 @@
 # Stationarity Checks
 
 Stationarity_checks = function(data){
-  ur.kpss(data,type = "tau",lags="long")
-  
+  kpss = summary(ur.kpss(data,type = "tau",lags="long"))
+  pp = summary(ur.pp(data,type='Z-tau',model = 'trend',lags='long'))
+  adf = summary(ur.df(Data,type='drift',lags=20,selectlags='AIC'))  
+  return(kpss,pp,adf)
 }
 
 
@@ -53,23 +55,23 @@ sparsity_checks <- function(
     F_hat <- F_hat[keep, , drop = FALSE]
   }
   
-  # subset Lambda rows to variables kept (if it has more rows)
+  # Check that each factor matches to each variable
   if (nrow(Lambda) != p) {
     Lambda <- Lambda[seq_len(min(nrow(Lambda), p)), seq_len(k), drop = FALSE]
   }
   
-  # --- compute R^2 for each variable against each factor ---
+  # compute R^2 for each variable against each factor
   r2_mat <- matrix(NA_real_, nrow = p, ncol = k,
                    dimnames = list(colnames(data),
                                    paste0("Factor", seq_len(k))))
   
   for (i in seq_len(k)) {
     for (j in seq_len(p)) {
-      r2_mat[j, i] <- summary(lm(data[[j]] ~ F_hat[, i]))$r.squared
+      r2_mat[j, i] <- summary(lm(data[[j]] ~ F_hat[, i]))$r.squared # How much variation does each factor explain in each variable
     }
     
     if (make_plots) {
-      # R^2 bar plot for factor i
+      # R^2 bar plot for each factor
       plotdata <- data.frame(variable = colnames(data), R2 = r2_mat[, i])
       print(
         ggplot(plotdata, aes(x = variable, y = R2)) +
