@@ -1,12 +1,48 @@
 #### DATA PREPROCESSING ####
 
+# Reorder Data
+Process <- function(data) {
+  data <- data[-1] # drop time columns
+  
+  nm  <- names(data)
+  idx <- grep("^(IR3TM|IRT3M)(_|$)", nm)   # match 3 month interest rate variables
+  
+  if (length(idx) >= 1) {
+    # move matching column(s) to the end (keeps their order if >1)
+    ord  <- c(setdiff(seq_along(nm), idx), idx)
+    data <- data[, ord, drop = FALSE]
+  }
+  data
+}
+
+
+
+
+
+
 # Stationarity Checks
 
-Stationarity_checks = function(data){
-  kpss = summary(ur.kpss(data,type = "tau",lags="long"))
-  pp = summary(ur.pp(data,type='Z-tau',model = 'trend',lags='long'))
-  adf = summary(ur.df(Data,type='drift',lags=20,selectlags='AIC'))  
-  return(kpss,pp,adf)
+stationarity_table <- function(data) {
+  res <- matrix(NA_character_, nrow = ncol(data), ncol = 3,
+                dimnames = list(colnames(data), c("KPSS","PP","ADF")))
+  
+  for (j in seq_len(ncol(data))) {
+    x <- data[[j]]
+    
+    kpss <- ur.kpss(x, type = "tau", lags = "long")                   # H0: (trend) stationarity
+    pp   <- ur.pp(x,   type = "Z-tau", model = "trend", lags = "long") # H0: unit root
+    adf  <- ur.df(x,   type = "drift", lags = 20, selectlags = "AIC")  # H0: unit root
+    
+    k_cv <- if (is.matrix(kpss@cval)) kpss@cval[1, "5pct"] else kpss@cval["5pct"]
+    p_cv <- if (is.matrix(pp@cval))   pp@cval[1, "5pct"]   else pp@cval["5pct"]
+    a_cv <- if (is.matrix(adf@cval))  adf@cval[1, "5pct"]  else adf@cval["5pct"]
+    
+    res[j, "KPSS"] <- if (as.numeric(kpss@teststat[1]) > k_cv) "Reject" else "Fail to Reject"
+    res[j, "PP"]   <- if (as.numeric(pp@teststat[1])   < p_cv) "Reject" else "Fail to Reject"
+    res[j, "ADF"]  <- if (as.numeric(adf@teststat[1])  < a_cv) "Reject" else "Fail to Reject"
+  }
+  
+  as.data.frame(res, check.names = FALSE, stringsAsFactors = FALSE)
 }
 
 
