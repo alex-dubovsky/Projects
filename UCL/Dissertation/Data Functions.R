@@ -45,7 +45,72 @@ stationarity_table <- function(data) {
   as.data.frame(res, check.names = FALSE, stringsAsFactors = FALSE)
 }
 
+series_id <- function(nm) sub("\\..*$", "", sub("_[^_]+$", "", nm))
+coerce_date <- function(v) {
+  if (inherits(v,"Date")) return(v)
+  if (inherits(v,"POSIXt")) return(as.Date(v))
+  s <- as.character(v); ym <- grepl("^\\d{4}-\\d{2}$", s)
+  as.Date(ifelse(ym, paste0(s,"-01"), s))
+}
 
+# ---- aggregate ONE dataset ----
+aggregate_monthlies_by_id <- function(dt, date_col = "Time",
+                                      avg_ids = monthly_stock_id,
+                                      sum_ids = monthly_flow_id) {
+  x <- as.data.table(copy(dt))
+  
+  # Date -> quarter keys
+  x[, (date_col) := coerce_date(get(date_col))]
+  yy <- as.integer(format(x[[date_col]], "%Y"))
+  mm <- as.integer(format(x[[date_col]], "%m"))
+  qq <- (mm - 1L) %/% 3L + 1L
+  x[, `:=`(qkey = paste0(yy,"Q",qq),
+           qstart = as.Date(sprintf("%d-%02d-01", yy, (qq - 1L) * 3L + 1L)))]
+  
+  # series cols, force numeric
+  series_cols <- setdiff(names(x), c(date_col,"qkey","qstart"))
+  x[, (series_cols) := lapply(.SD, function(z) suppressWarnings(as.numeric(z))), .SDcols = series_cols]
+  
+  # long + classify
+  long <- data.table::melt(x, id.vars = c("qkey","qstart"),
+                           measure.vars = series_cols,
+                           variable.name = "var", value.name = "value",
+                           variable.factor = FALSE)
+  long[, id := series_id(var)]
+  long[, rule := fifelse(id %chin% sum_ids, "sum",
+                         fifelse(id %chin% avg_ids, "avg", "keep"))]
+  
+  # aggregate
+  agg <- long[, {
+    v <- value[!is.na(value)]; n <- length(v)
+    out <- if (rule[1] == "keep") {
+      if (n >= 1L) v[1L] else NA_real_                        # quarterly -> keep
+    } else {                                                  # monthly
+      if (n == 3L && data.table::uniqueN(v) == 1L) v[1L]      # repeated stamp guard
+      else if (n == 3L && rule[1] == "sum") sum(v)
+      else if (n == 3L && rule[1] == "avg") mean(v)
+      else NA_real_                                           # 0/2 months -> NA
+    }
+    .(value = out)
+  }, by = .(qstart, var, rule)]
+  
+  # wide, keep original order where possible
+  wide <- data.table::dcast(agg, qstart ~ var, value.var = "value")
+  data.table::setnames(wide, "qstart", "Time")
+  data.table::setorder(wide, Time)
+  data.table::setcolorder(wide, c("Time", intersect(series_cols, names(wide))))
+  wide[]
+}
+
+# ---- run it over your whole list (FIXED ARG ORDER) ----
+aggregate_list_monthlies <- function(lst, date_col = "Time",
+                                     avg_ids = monthly_stock_id,
+                                     sum_ids = monthly_flow_id) {
+  out <- lapply(lst, aggregate_monthlies_by_id,
+                date_col = date_col, avg_ids = avg_ids, sum_ids = sum_ids)
+  names(out) <- names(lst)
+  out
+}
 
 
 
