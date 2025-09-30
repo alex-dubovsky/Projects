@@ -53,7 +53,7 @@ coerce_date <- function(v) {
   as.Date(ifelse(ym, paste0(s,"-01"), s))
 }
 
-# ---- aggregate ONE dataset ----
+
 aggregate_monthlies_by_id <- function(dt, date_col = "Time",
                                       avg_ids = monthly_stock_id,
                                       sum_ids = monthly_flow_id) {
@@ -99,10 +99,11 @@ aggregate_monthlies_by_id <- function(dt, date_col = "Time",
   data.table::setnames(wide, "qstart", "Time")
   data.table::setorder(wide, Time)
   data.table::setcolorder(wide, c("Time", intersect(series_cols, names(wide))))
+  num_cols <- setdiff(names(wide), "Time")
+  wide[, (num_cols) := lapply(.SD, as.numeric), .SDcols = num_cols]
   wide[]
 }
 
-# ---- run it over your whole list (FIXED ARG ORDER) ----
 aggregate_list_monthlies <- function(lst, date_col = "Time",
                                      avg_ids = monthly_stock_id,
                                      sum_ids = monthly_flow_id) {
