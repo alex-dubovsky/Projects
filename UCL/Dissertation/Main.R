@@ -1,5 +1,5 @@
-remotes::install_github("RobertAdamek/HDLPrepro")
-install.packages(pkgs = c("dplyr", "ggpattern", "ggplot2", "ggpubr", "readxl", "reshape2","bigtime","xtable"))
+
+install.packages(pkgs = c("dplyr", "ggpattern", "ggplot2", "ggpubr", "readxl", "reshape2","bigtime","xtable","here"))
 devtools::install_github("cykbennie/fbi")
 install.packages(pkgs = c("remotes","vars","readx",'ggpatterm','dplyr','ggplot2','ggpubr','reshape2','bigtime','xtable','stats','rrpack','MTS','urca','
          MCMCpack','tictoc'))
@@ -31,29 +31,420 @@ library(missMethods)
 library(norm)
 library(data.table)
 library(glmnet)
-library(DissertationSimPack)
-source(file=paste0(system.file("replication_scripts", package="HDLPrepro", mustWork = TRUE),"/processing_FREDMD.R"), local=TRUE)   ###### FOR ADAMEK DATA
-source("C:/Users/AlexD/Documents/Economics/UCL/Dissertation/R Code/DFM_Functions.R")
+library(here)
+source(here("UCL/Dissertation", "DFM_Functions.R")) 
+source(here("UCL/Dissertation", "Data Functions.R")) 
+source(here("UCL/Dissertation", "PreProcessing Functions.R"))
+setwd(here("UCL/Dissertation/Outputs"))
 
-setwd("C:/Users/AlexD/Documents/Economics/UCL/Dissertation/R Code/Output")
-############ Data Preprocessing!! ####################
+############################  European Data ####################################
 
-n_f <- 6 # number of factors determined by Bai and Ng information critera
+path = here("UCL/Dissertation/Data")
+files = list.files(path, pattern = "\\.xlsx?$", full.names = TRUE)
+all_list <- lapply(files, read_excel)
+stems = tools::file_path_sans_ext(basename(files)) 
+names(all_list) = stems
+
+monthly_stock_id = c( # prefixes of the variables in each dataset which are stock variables
+  "IRT3M","IRT6M","LTIRT",
+  # (7) Industrial production & turnover indexes
+  "IPMN","IPCAG","IPDOG","IPIDCOG","IPINDCOG","IPING","IPINRG",
+  "TRNNM","TRNCAG","TRNCOG","TRNDCG","TRNNDCG","TRNING","TRNNRG",
+  # (8) Prices
+  "PPICAG","PPICOG","PPIDCOG","PPINDCOG","PPING","PPINRG",
+  "HICPOV","HICPNEF","HICPCG","HICPIN","HICPSV","HICPNG",
+  # (9) Confidence indicators
+  "ICONFIX","CCONFIX","ESENTX","KCONFIX","RTCONFIX","SCONFIX","BCI","CCI",
+  # (10) Monetary aggregates (levels)
+  "CURR","M1","M2",
+  # (11) Others
+  "SHIX"
+)
+monthly_flow_id = c(
+  "CAREG"
+)
+
+
+# Quarterly aggregation 
+Data_list =  aggregate_list_monthlies(all_list, date_col = "Time")
+Mat_list <- lapply(Data_list, as.data.frame)
+
+for (nm in names(Mat_list)) {                     # loop over each dataset in your list
+  df  = Mat_list[[nm]]                          # take one data.frame
+  vals = as.matrix(df[, 2:ncol(df), drop = FALSE]) # drop date col; keep numeric block
+  df[, 2:ncol(df)] = suppressWarnings(imputation(               # impute missing/ragged cells in the block
+    vals, undo_scale = FALSE
+  )
+  )
+  
+  Mat_list[[nm]] = df                          # write back to the list
+}
+
+na_rows = sapply(Mat_list, function(d) sum(rowSums(is.na(d[,-1,drop=FALSE])) > 0))
+
+
+
+# Adding EA-wide 3 month interest rate to each quarterly dataset
+merge_obj = Mat_list[[4]][,c("Time","IRT3M_EACC")]
+for (i in seq_along(Mat_list)){
+  if (i == 4) next
+  else Mat_list[[i]] = merge(Mat_list[[i]],merge_obj,by = "Time",all.x = TRUE,sort=FALSE)
+}
+
+EA_LT = c(
+  # (1) National Accounts (1–17)
+  0,2,2,2,2,2,2,2,2,2,2,2,0,0,0,0,0,0,
+  # (2) Labor Market Indicators (18–38)
+  2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,0,0,0,2,2,2,
+  # (3) Credit Aggregates (39–64);;
+  2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,
+  # (4) Labor Costs (65–72)
+  2,2,2,2,2,2,2,2,
+  # (5) Exchange Rates (73–74)
+  2,2,
+  # (6) Interest Rates (75–77)
+  4,4,4,
+  # (7) Industrial Production and Turnover (78–91)
+  2,2,2,2,2,2,2,2,2,2,2,2,2,2,
+  # (8) Prices (92–105)
+  2,2,2,2,2,2,2,2,2,2,2,2,2,2,
+  # (9) Confidence Indicators (106–113)
+  0,0,0,0,0,0,2,2,
+  # (10) Monetary Aggregates (114–116)
+  2,2,2,
+  # (11) Others (117–118)
+  2,2
+)
+DE_LT = c(
+  # (1) National Accounts (1–17)
+  0,2,2,2,2,2,2,2,2,2,2,2,2,2,0,0,0,0,
+  # (2) Labor Market Indicators (18–38)
+  2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,0,0,0,2,2,2,
+  # (3) Credit Aggregates (39–61)
+  2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,
+  # (4) Labor Costs (62–68)
+  2,2,2,2,2,2,2,
+  # (5) Exchange Rates (69)
+  2,
+  # (6) Interest Rates (70)
+  4,
+  # (7) Industrial Production and Turnover (71–84)
+  2,2,2,2,2,2,2,2,2,2,2,2,2,2,
+  # (8) Prices (85–98)
+  2,2,2,2,2,2,2,2,2,2,2,2,2,2,
+  # (9) Confidence Indicators (99–106)
+  0,0,0,0,0,0,2,2,
+  # (10) Others (107)
+  2,4
+)
+
+FR_LT = c(
+  # Time column
+  0,
+  # (1) National Accounts (Series 1–17)
+  2,2,2,2,2,2,2,2,2,2,2,2,2,0,0,0,0,
+  # (2) Labor Market Indicators (Series 18–38)
+  2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,0,0,0,2,2,2,
+  # (3) Credit Aggregates (Series 39–63)
+  2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,
+  # (4) Labor Costs (Series 64–71)
+  2,2,2,2,2,2,2,2,
+  # (5) Exchange Rates (Series 72)
+  2,
+  # (6) Interest Rates (Series 73)
+  4,
+  # (7) Industrial Production and Turnover (Series 74–87)
+  2,2,2,2,2,2,2,2,2,2,2,2,2,2,
+  # (8) Prices (Series 88–101)
+  2,2,2,2,2,2,2,2,2,2,2,2,2,2,
+  # (9) Confidence Indicators (Series 102–109)
+  0,0,0,0,0,0,2,2,
+  # (11) Others (Series 110)
+  2,
+  # Extra variable (IRT3M_EACC)
+  4
+)
+
+IT_LT = c(
+  # Time column
+  0,
+  # (1) National Accounts (Series 1–14)
+  2,2,2,2,2,2,2,2,2,2,2,2,2,0,0,0,0,
+  # (2) Labor Market Indicators (Series 15–35)
+  2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,0,0,0,2,2,2,
+  # (3) Credit Aggregates (Series 36–52)
+  2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,
+  # (4) Labor Costs (Series 61–67)
+  2,2,2,2,2,2,2,
+  # (5) Exchange Rates (Series 68)
+  2,
+  # (6) Interest Rates (Series 69)
+  4,
+  # (7) Industrial Production and Turnover (Series 70–82)
+  2,2,2,2,2,2,2,2,2,2,2,2,2,
+  # (8) Prices (Series 83–96)
+  2,2,2,2,2,2,2,2,2,2,2,2,2,2,
+  # (9) Confidence Indicators (Series 97–104)
+  0,0,0,0,0,0,2,2,
+  # (11) Others (Series 105)
+  2,
+  # Extra variable (IRT3M_EACC)
+  4
+)
+
+ES_LT = c(
+  # Time column
+  0,
+  # (1) National Accounts (Series 1–14)
+  2,2,2,2,2,2,2,2,2,2,0,0,0,0,
+  # (2) Labor Market Indicators (Series 15–35)
+  2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,0,0,0,2,2,2,
+  # (3) Credit Aggregates (Series 36–52)
+  2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,
+  # (4) Labor Costs (Series 58–64)
+  2,2,2,2,2,2,2,
+  # (5) Exchange Rates (Series 65)
+  2,
+  # (6) Interest Rates (Series 66)
+  4,
+  # (7) Industrial Production and Turnover (Series 67–79)
+  2,2,2,2,2,2,2,2,2,2,2,2,2,2,
+  # (8) Prices (Series 81–94)
+  2,2,2,2,2,2,2,2,2,2,2,2,2,2,
+  # (9) Confidence Indicators (Series 95–102)
+  0,0,0,0,0,0,2,2,
+  # (11) Others (Series 103)
+  2,
+  # Extra variable (IRT3M_EACC)
+  4
+)
+  
+PT_LT = c(
+  # Time column
+  0,
+  # (1) National Accounts (Series 1–14)
+  2,2,2,2,2,2,2,2,2,2,0,0,0,0,
+  # (2) Labor Market Indicators (Series 15–35)
+  2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,0,0,0,2,2,2,
+  # (3) Credit Aggregates (Series 36–56)
+  2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,
+  # (4) Labor Costs (Series 61–68)
+  2,2,2,2,2,2,2,2, 
+  # (5) Exchange Rates (Series 69)
+  2,
+  # (6) Interest Rates (Series 70)
+  4,
+  # (7) Industrial Production and Turnover (Series 71–83)
+  2,2,2,2,2,2,2,2,2,2,2,2,2,
+  # (8) Prices (Series 84–90)
+  2,2,2,2,2,2,2,
+  # (9) Confidence Indicators (Series 91–98)
+  0,0,0,0,0,0,2,2,
+  # (11) Others (Series 99)
+  2,
+  # Extra variable (IRT3M_EACC)
+  4
+)
+
+NL_LT = c(
+  # Time column
+  0,
+  # (1) National Accounts (Series 1–17)
+  2,2,2,2,2,2,2,2,2,2,2,2,2,0,0,0,0,
+  # (2) Labor Market Indicators (Series 18–38)
+  2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,0,0,0,2,2,2,
+  # (3) Credit Aggregates (Series 39–56)
+  2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,
+  # (4) Labor Costs (Series 64–71)
+  2,2,2,2,2,2,2,2,
+  # (5) Exchange Rates (Series 72)
+  2,
+  # (6) Interest Rates (Series 73)
+  4,
+  # (7) Industrial Production and Turnover (Series 74–87)
+  2,2,2,2,2,2,2,2,2,2,2,2,2,
+  # (8) Prices (Series 88–100)
+  2,2,2,2,2,2,2,2,2,2,2,2,2,
+  # (9) Confidence Indicators (Series 101–108)
+  0,0,0,0,0,0,2,2,
+  # (11) Others (Series 109)
+  2,
+  # Extra variable (IRT3M_EACC)
+  4
+)
+
+AT_LT <- c(
+  0,  # Time
+  # (1) National Accounts (1–17)
+  2,2,2,2,2,2,2,2,2,2,2,2,2,  # 1–13
+  0,0,0,0,                     # 14–17
+  # (2) Labor Market Indicators (18–38)
+  2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,0,0,0,2,2,2,
+  # (3) Credit Aggregates (39–62)
+  2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,
+  # (4) Labor Costs (63–70)
+  2,2,2,2,2,2,2,2,             # 63–70
+  # (5) Exchange Rates (71)
+  2,                           # 71
+  # (6) Interest Rates (72)
+  4,                           # 72
+  # (7) Industrial Production & Turnover (73–86)
+  2,2,2,2,2,2,2,2,2,2,2,2,2,2, # 73–86
+  # (8) Prices (87–100)
+  2,2,2,2,2,2,                 # 87–92
+  2,2,2,2,2,2,                 # 93–98
+  2,2,                         # 99–100
+  # (9) Confidence Indicators (101–108)
+  0,0,0,0,0,0,                 # 101–106
+  2,2,                         # 107–108
+  # (11) Others (109)
+  2,                           # 109
+  # Extra last code
+  4                            # IRT3M_EACC
+)
+
+EL_LT = c(
+  # Time column
+  0,
+  # (1) National Accounts (Series 1–12)
+  2,2,2,2,2,2,2,2,2,2,0,0,
+  # (2) Labor Market Indicators (Series 13–33)
+  2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,0,0,0,2,2,2,
+  # (3) Credit Aggregates (Series 39–49)
+  2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,
+  # (4) Labor Costs (Series 54–61)
+  2,2,2,2,2,2,2,2,
+  # (5) Exchange Rates (Series 62)
+  2,
+  # (6) Interest Rates (Series 63)
+  4,
+  # (7) Industrial Production and Turnover (Series 64–76)
+  2,2,2,2,2,2,2,2,2,2,2,2,2,2,
+  # (8) Prices (Series 77–89)
+  2,2,2,2,2,2,2,2,2,2,2,2,2,
+  # (9) Confidence Indicators (Series 90–97)
+  0,0,0,0,0,0,2,2,
+  # (11) Others (Series 98)
+  2,
+  # Extra variable (IRT3M_EACC)
+  4
+)
+
+IE_LT = c(
+  # Time column
+  0,
+  # (1) National Accounts (Series 1–17)
+  2,2,2,2,2,2,2,2,2,2,2,2,2,0,0,0,0,
+  # (2) Labor Market Indicators (Series 18–38)
+  2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,0,0,0,2,2,2,
+  # (3) Credit Aggregates (Series 39–46)
+  2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,
+  # (4) Labor Costs (Series 57–62)
+  2,2,2,2,2,2,
+  # (5) Exchange Rates (Series 63)
+  2,
+  # (6) Interest Rates (Series 64)
+  4,
+  # (8) Prices (Series 65–72)
+  2,2,2,2,2,2,2,2,
+  # (9) Confidence Indicators (Series 73–80)
+  0,0,0,0,0,0,2,2,
+  # (11) Others (Series 81)
+  2,
+  # Extra variable (IRT3M_EACC)
+  4
+)
+
+BE_LT = c(
+  # Time column
+  0,
+  # (1) National Accounts (Series 1–14)
+  2,2,2,2,2,2,0,0,0,
+  # (2) Labor Market Indicators (Series 15–35)
+  2,2,2,2,2,2,2,2,2,2,2,2,2,2,0,0,0,2,2,2,
+  # (3) Credit Aggregates (Series 35–56)
+  2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,
+  # (4) Labor Costs (Series 57–64)
+  2,2,2,2,2,2,2,2,
+  # (5) Exchange Rates (Series 65)
+  2,
+  # (6) Interest Rates (Series 66)
+  4,
+  # (7) Industrial Production and Turnover (Series 67–79)
+  2,4,2,2,2,2,2,2,2,2,2,2,2,2,2,2,
+  # (8) Prices (Series 80–92)
+  2,2,2,2,2,2,2,2,2,2,2,2,2,2,
+  # (9) Confidence Indicators (Series 94–101)
+  0,0,0,0,0,0,2,2,
+  # (11) Others (Series 102)
+  2,
+  # Extra variable (IRT3M_EACC)
+  4
+)
+
+slow_prefixes = c("ULC","GDP","EXPGS","GFC","HFCE","CONS","GCF","GFA","AHRDI",
+                  "AHFCE","GNFC","GHIR","GHSR","TEMP","EMP","SEMP","THOURS","EMP",
+                  "UNE","RPRP","WS","ESC","IP","TR","CAREG","IMP")
+fast_prefixes = c("TASS.SDB","TASS.LBD","TLB","NFC","GGASS","GGLB","HHASS","HHLB","REER42","ERUS",
+                  "IRT6M","LTIRT","PPI","HICP","DFGDP","HPRC","ICONFIX","CCONFIX",
+                  "ESENTIX","KCONFIX","RTCONFIX","SCONFIX","BCI","CCI", "CURR","M1","M2","SHIX", "TASS.SLN","TASS.LLN")
+Slow = setNames(vector("list", length(Mat_list)), names(Mat_list))
+Fast = setNames(vector("list", length(Mat_list)), names(Mat_list))
+for (nm in names(Mat_list)) { # IRT3M_EACC should be unclassified in all datasets
+  cls = pick_slow_fast(Mat_list[[nm]], slow_prefixes, fast_prefixes)
+  Slow[[nm]] = cls$slow
+  Fast[[nm]] = cls$fast
+  if (length(cls$unknown))
+    cat("Unclassified in", nm, ":", paste(cls$unknown, collapse = ", "), "\n")
+  else print("No unclassified variables")
+}
+
+Codes = list(
+  EAdata = EA_LT,
+  DEdata = DE_LT,
+  FRdata = FR_LT,
+  ITdata = IT_LT,
+  ELdata = EL_LT,
+  PTdata = PT_LT,
+  ESdata = ES_LT,
+  IEdata = IE_LT,
+  NLdata = NL_LT,
+  BEdata = BE_LT,
+  ATdata = AT_LT
+)
+Cleaned = list()
+for (nm in names(Mat_list)) {
+  df = Mat_list[[nm]]
+  codes = Codes[[nm]]
+  Cleaned[[nm]] = clean_data(
+    raw_data = df,
+    slow_names = Slow[[nm]],
+    FFR_name = "IRT3M_EACC",
+    fast_names = Fast[[nm]],
+    transform_codes = codes
+  )
+  
+  cat("Finished cleaning", nm, "\n")
+}
+
+
+
+
+
+Stationary_Checks <- setNames(lapply(all_datasets, function(nm) stationarity_table(get(nm))),
+                   all_datasets)
+for (i in length(Stationary_Checks)){
+  print(Stationary_Checks[[i]])
+}
+
+n_f <- 8 # number of factors determined by Bai and Ng information critera
 p_f <-1 # vector autoregressive order of the factors, we found that by BIC this is equal to 1
-q_v <- 2 # autoregressive order of the idiosyncratic errors
-S<-1:122# indices of the variables included in estimating the factors. Useful for determining the position of the policy variable which has been ordered last
+q_v <- 1 # autoregressive order of the idiosyncratic errors
+S<-1:119# indices of the variables included in estimating the factors. Useful for determining the position of the policy variable which has been ordered last
 h_max=20 #  maximum horizon - the impulse response function is evaluated from horizon 0 to h_max
 set.seed(1) # We use set.seed(9) in the calibration
 
-##### For USA Adamek Data ######
-dat <- CDbmedium$data_sans_dates
-FFR_ind <- which(names(dat) == "FEDFUNDS")
-IP_ind <- which(names(dat) == "INDPRO")
-CPI_ind = which(names(dat)=="CPIAUCSL")
-Data <-cbind(dat[, IP_ind, drop = FALSE], dat[, -c(IP_ind, FFR_ind)], dat[, FFR_ind, drop = FALSE]) #ordering IP first and FFR last
-N <- ncol(Data)
-
-###################################################### DENSE DYNAMIC FACTOR MODEL ############################################################################
+########################## DENSE DYNAMIC FACTOR MODEL ##########################
 #factors by pc, VAR by OLS, can take a few minutes to run
 Dense_DFM<-Estimate_DFM(Data, n_f = n_f, lags_f = p_f, lags_v = q_v, max_EV = 0.98, undo_scale=TRUE, factor_method = "pc", VAR_method="OLS") 
 Dense_IRF<-impulse_response_ABCD(Dense_DFM$factors, Dense_DFM$idio, S, 20, policy_var = length(S), outcome_var = 1) # Industrial Production
@@ -725,3 +1116,4 @@ combined <- ggarrange(top_row, first_row, second_row, ncol = 1)
 # (optional) save
 ggsave(filename = "fig3_with_DML.pdf", plot = combined, device = "pdf",
        width = 18, height = 18, units = "cm", dpi = 1000)
+       
