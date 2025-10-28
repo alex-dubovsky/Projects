@@ -1,4 +1,4 @@
-Hello there, welcome to my profile page. Here you can access a small collection of work from my Undergraduate and Postgraduate degrees - which is still being updated
+Hello there, welcome to my profile page. Here you can access a collection of previoust economic projects I have worked on - some of which is still being updated and expanded upon.
 
 ### FOR SCREENING (DATA PREPROCESSING/HANDLING) PLEASE VIEW THE MAIN FILE, DATA FUNCTIONS and DATA PREPROCESSING FILES IN THE EUROVERSION BRANCH UNDER UCL DISSERTATION ###
 
